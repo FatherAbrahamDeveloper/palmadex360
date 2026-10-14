@@ -67,7 +67,12 @@ app.get("/api/v1/health/db", async (req, res) => {
       message: "Database connection is healthy",
     });
   } catch (error) {
-    console.error("Database health check failed:", error.message);
+    // Diagnostic details go to server logs, not the HTTP response.
+    console.error("Database health check failed:", {
+      name: error.name,
+      code: error.code,
+      message: error.message,
+    });
 
     res.status(503).json({
       success: false,
