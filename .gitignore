@@ -1,0 +1,11 @@
+
+# Local secrets and database backups
+client/.env.production
+server/renamyconnect_dev_backup.sql
+server/update-palmadex-admin.js
+
+# Palmadex360 local secrets and backups
+client/.env.production
+server/.env
+server/renamyconnect_dev_backup.sql
+server/update-palmadex-admin.js

@@ -1,0 +1,2 @@
+id,firstName,lastName,email,passwordHash,role,isActive,createdAt,updatedAt,companyId
+cmsd9fs540002xtxghs5h762t,YourName,YourSurname,admin@renamy.com,$2b$10$Yw/zwqJSPWIR4YUZXr.d0O7kskynjckTIOFKnF2XkliLmU1aMhMgu,SUPER_ADMIN,t,2026-08-03 13:23:48.664,2026-08-03 13:23:48.664,cmsd9frz90000xtxg0jstpbok

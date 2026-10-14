@@ -1,0 +1,607 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  EXPORT_MANAGER
+  SALES
+  LOGISTICS
+  DOCUMENTATION
+  CUSTOMER_SUPPORT
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+  COMPANY
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+}
+
+enum CRMContactSource {
+  WHATSAPP
+  EMAIL
+  MANUAL
+  IMPORT
+}
+
+enum CRMContactStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  FOLLOW_UP
+  NEGOTIATION
+  WON
+  LOST
+  CLOSED
+}
+
+enum CRMNoteType {
+  GENERAL
+  FOLLOW_UP
+  CALL
+  MEETING
+  INTERNAL
+}
+
+enum ConversationChannel {
+  INTERNAL
+  WHATSAPP
+  EMAIL
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+  SYSTEM
+}
+
+enum MessageSenderType {
+  USER
+  CONTACT
+  SYSTEM
+}
+
+enum SupplierBusinessType {
+  FARMER
+  COOPERATIVE
+  AGGREGATOR
+  PROCESSOR
+  MANUFACTURER
+  EXPORTER
+  WHOLESALER
+  OTHER
+}
+
+enum BusinessRegistrationStatus {
+  REGISTERED
+  NOT_REGISTERED
+  IN_PROGRESS
+}
+
+enum SupplierStatus {
+  PENDING
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  MORE_INFO_REQUIRED
+}
+
+enum SupplierProductForm {
+  FRESH
+  DRIED
+  RAW
+  PROCESSED
+  FROZEN
+  OTHER
+}
+
+model CRMContact {
+  id        String @id @default(cuid())
+  companyId String
+
+  firstName   String?
+  lastName    String?
+  displayName String
+
+  companyName String?
+  email       String?
+  phone       String?
+
+  source CRMContactSource @default(MANUAL)
+  status CRMContactStatus @default(NEW)
+
+  assignedToId String?
+
+  lastContactAt  DateTime?
+  nextFollowUpAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assignedTo User?   @relation("CRMContactAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  notes         CRMNote[]
+  statusHistory CRMStatusHistory[]
+  conversations Conversation[]
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, source])
+  @@index([companyId, assignedToId])
+  @@index([companyId, phone])
+  @@index([companyId, email])
+  @@index([companyId, updatedAt])
+}
+
+model CRMNote {
+  id        String  @id @default(cuid())
+  companyId String
+  contactId String
+  authorId  String?
+
+  type    CRMNoteType @default(GENERAL)
+  content String      @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact CRMContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  author  User?      @relation("CRMNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([contactId])
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+model CRMStatusHistory {
+  id          String  @id @default(cuid())
+  companyId   String
+  contactId   String
+  changedById String?
+
+  fromStatus CRMContactStatus?
+  toStatus   CRMContactStatus
+
+  note      String?  @db.Text
+  createdAt DateTime @default(now())
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact   CRMContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  changedBy User?      @relation("CRMStatusChanger", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([contactId])
+  @@index([changedById])
+  @@index([createdAt])
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?  @unique
+  phone     String?
+  address   String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users            User[]
+  products         Product[]
+  conversations    Conversation[]
+  files            File[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  crmContacts      CRMContact[]
+  crmNotes         CRMNote[]
+  crmStatusHistory CRMStatusHistory[]
+  crmImportBatches CRMImportBatch[]
+  suppliers        Supplier[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  companyId    String
+  firstName    String
+  lastName     String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(SALES)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company                      Company                       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedFiles                File[]                        @relation("FileUploader")
+  sentMessages                 Message[]                     @relation("MessageSender")
+  conversationMembers          ConversationMember[]
+  notifications                Notification[]
+  auditLogs                    AuditLog[]                    @relation("AuditActor")
+  assignedCRMContacts          CRMContact[]                  @relation("CRMContactAssignee")
+  crmNotes                     CRMNote[]                     @relation("CRMNoteAuthor")
+  crmStatusChanges             CRMStatusHistory[]            @relation("CRMStatusChanger")
+  crmImportBatches             CRMImportBatch[]              @relation("CRMImportUser")
+  verifiedSuppliers            Supplier[]                    @relation("SupplierVerifier")
+  reviewedSupplierApplications SupplierApplication[]         @relation("SupplierApplicationReviewer")
+  supplierVerificationChanges  SupplierVerificationHistory[] @relation("SupplierVerificationActor")
+
+  @@index([companyId])
+}
+
+model ProductCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  companyId   String
+  categoryId  String?
+  name        String
+  description String?  @db.Text
+  sku         String?
+  unit        String?
+  price       Decimal? @db.Decimal(15, 2)
+  currency    String?  @db.VarChar(10)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company  Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  files    File[]
+
+  @@index([companyId])
+  @@index([categoryId])
+}
+
+model File {
+  id           String   @id @default(cuid())
+  companyId    String?
+  uploadedById String?
+  productId    String?
+  originalName String
+  storedName   String
+  path         String
+  mimeType     String
+  size         Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company    Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedBy User?    @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  product    Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  messageAttachments MessageAttachment[]
+
+  @@index([companyId])
+  @@index([uploadedById])
+  @@index([productId])
+}
+
+model Conversation {
+  id        String  @id @default(cuid())
+  companyId String?
+  contactId String?
+
+  type    ConversationType    @default(DIRECT)
+  channel ConversationChannel @default(INTERNAL)
+
+  title String?
+
+  externalThreadKey String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company?    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact CRMContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  members  ConversationMember[]
+  messages Message[]
+
+  @@index([companyId])
+  @@index([contactId])
+  @@index([companyId, channel])
+  @@index([companyId, updatedAt])
+}
+
+model ConversationMember {
+  id             String    @id @default(cuid())
+  conversationId String
+  userId         String
+  joinedAt       DateTime  @default(now())
+  lastReadAt     DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String  @id @default(cuid())
+  conversationId String
+  senderId       String?
+
+  type       MessageType       @default(TEXT)
+  direction  MessageDirection  @default(OUTBOUND)
+  senderType MessageSenderType @default(USER)
+
+  externalKey String?  @unique
+  content     String?  @db.Text
+  isEdited    Boolean  @default(false)
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?        @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  attachments MessageAttachment[]
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+model MessageAttachment {
+  id        String   @id @default(cuid())
+  messageId String
+  fileId    String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  file    File    @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, fileId])
+  @@index([fileId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String?
+  title     String
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([isRead])
+}
+
+model CRMImportBatch {
+  id           String  @id @default(cuid())
+  companyId    String
+  importedById String?
+
+  source   CRMContactSource
+  fileName String?
+
+  totalRecords Int @default(0)
+  createdCount Int @default(0)
+  updatedCount Int @default(0)
+  skippedCount Int @default(0)
+  errorCount   Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  importedBy User?   @relation("CRMImportUser", fields: [importedById], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  companyId String?
+  action    String
+  entity    String?
+  entityId  String?
+  details   String?  @db.Text
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user    User?    @relation("AuditActor", fields: [userId], references: [id], onDelete: SetNull)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model Supplier {
+  id        String @id @default(cuid())
+  companyId String
+
+  companyName     String
+  tradingName     String?
+  businessType    SupplierBusinessType @default(OTHER)
+  description     String?              @db.Text
+  establishedDate DateTime?
+
+  registrationStatus      BusinessRegistrationStatus @default(IN_PROGRESS)
+  registrationNumber      String? // Optional CAC registration number
+  registrationCountry     String?
+  taxIdentificationNumber String?
+  registrationAuthority   String?
+
+  email            String
+  phone            String
+  alternativePhone String?
+  website          String?
+  contactPerson    String
+  contactJobTitle  String?
+
+  country                 String
+  stateOrRegion           String?
+  city                    String
+  address                 String   @db.Text
+  warehouseAddress        String?  @db.Text
+  // Export experience
+  hasExportedBefore       Boolean?
+  exportExperienceYears   Int?
+  previousExportCountries String?  @db.Text
+  exportDestinations      String?  @db.Text
+
+  // Operations and logistics
+  logisticsCapabilities String? @db.Text
+  leadTimeDays          Int?
+
+  // Quality assurance
+  qualityControlDescription String?  @db.Text
+  traceabilityAvailable     Boolean?
+
+  // Commercial information
+  preferredPaymentTerms String? @db.Text
+  quotationCurrency     String? @db.VarChar(10)
+  tradeReferences       String? @db.Text
+
+  status            SupplierStatus @default(PENDING)
+  verifiedAt        DateTime?
+  verifiedById      String?
+  verificationNotes String?        @db.Text
+
+  // Nullable until a proper rating system is implemented.
+  rating Decimal? @db.Decimal(3, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  verifiedBy User? @relation("SupplierVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  products            SupplierProduct[]
+  application         SupplierApplication?
+  documents           SupplierDocument[]
+  verificationHistory SupplierVerificationHistory[]
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, country, city])
+  @@index([companyId, updatedAt])
+  @@index([email])
+}
+
+model SupplierApplication {
+  id         String @id @default(cuid())
+  supplierId String @unique
+
+  submittedAt           DateTime @default(now())
+  declarationAccepted   Boolean  @default(false)
+  privacyNoticeAccepted Boolean  @default(false)
+
+  reviewNotes  String?   @db.Text
+  reviewedAt   DateTime?
+  reviewedById String?
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  reviewedBy User? @relation("SupplierApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([submittedAt])
+  @@index([reviewedById])
+}
+
+model SupplierProduct {
+  id         String @id @default(cuid())
+  supplierId String
+
+  name        String
+  category    String
+  variety     String?
+  description String? @db.Text
+
+  productForm SupplierProductForm @default(OTHER)
+
+  supplyCapacity   Decimal? @db.Decimal(15, 3)
+  capacityUnit     String?
+  minimumOrder     Decimal? @db.Decimal(15, 3)
+  harvestSeasons   String?  @db.Text
+  packagingOptions String?  @db.Text
+
+  indicativePrice Decimal? @db.Decimal(15, 2)
+  currency        String?  @db.VarChar(10)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
+  @@index([supplierId, isActive])
+  @@index([category])
+}
+
+model SupplierDocument {
+  id         String @id @default(cuid())
+  supplierId String
+
+  documentType String
+  originalName String
+  storedName   String
+  path         String
+  mimeType     String
+  size         Int
+
+  documentNumber String?
+  issuedAt       DateTime?
+  expiresAt      DateTime?
+
+  uploadedAt DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
+  @@index([documentType])
+}
+
+model SupplierVerificationHistory {
+  id          String  @id @default(cuid())
+  supplierId  String
+  changedById String?
+
+  previousStatus SupplierStatus?
+  newStatus      SupplierStatus
+  notes          String?         @db.Text
+
+  createdAt DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  changedBy User? @relation("SupplierVerificationActor", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([supplierId, createdAt])
+  @@index([changedById])
+}

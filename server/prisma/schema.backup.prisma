@@ -1,0 +1,395 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model auditlog {
+  id        String   @id
+  userId    String?
+  companyId String?
+  action    String
+  entity    String?
+  entityId  String?
+  details   String?  @db.Text
+  ipAddress String?
+  createdAt DateTime @default(now())
+  company   company? @relation(fields: [companyId], references: [id], onDelete: Cascade, map: "AuditLog_companyId_fkey")
+  user      user?    @relation(fields: [userId], references: [id], map: "AuditLog_userId_fkey")
+
+  @@index([companyId], map: "AuditLog_companyId_idx")
+  @@index([createdAt], map: "AuditLog_createdAt_idx")
+  @@index([entity, entityId], map: "AuditLog_entity_entityId_idx")
+  @@index([userId], map: "AuditLog_userId_idx")
+}
+
+model company {
+  id               String             @id
+  name             String
+  email            String?            @unique(map: "Company_email_key")
+  phone            String?
+  address          String?
+  website          String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  auditlog         auditlog[]
+  conversation     conversation[]
+  crmcontact       crmcontact[]
+  crmimportbatch   crmimportbatch[]
+  crmnote          crmnote[]
+  crmstatushistory crmstatushistory[]
+  file             file[]
+  notification     notification[]
+  product          product[]
+  user             user[]
+}
+
+model conversation {
+  id                 String               @id
+  companyId          String?
+  contactId          String?
+  type               conversation_type    @default(DIRECT)
+  channel            conversation_channel @default(INTERNAL)
+  title              String?
+  externalThreadKey  String?              @unique(map: "Conversation_externalThreadKey_key")
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  company            company?             @relation(fields: [companyId], references: [id], onDelete: Cascade, map: "Conversation_companyId_fkey")
+  crmcontact         crmcontact?          @relation(fields: [contactId], references: [id], map: "Conversation_contactId_fkey")
+  conversationmember conversationmember[]
+  message            message[]
+
+  @@index([companyId, channel], map: "Conversation_companyId_channel_idx")
+  @@index([companyId], map: "Conversation_companyId_idx")
+  @@index([companyId, updatedAt], map: "Conversation_companyId_updatedAt_idx")
+  @@index([contactId], map: "Conversation_contactId_idx")
+}
+
+model conversationmember {
+  id             String       @id
+  conversationId String
+  userId         String
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime?
+  conversation   conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, map: "ConversationMember_conversationId_fkey")
+  user           user         @relation(fields: [userId], references: [id], onDelete: Cascade, map: "ConversationMember_userId_fkey")
+
+  @@unique([conversationId, userId], map: "ConversationMember_conversationId_userId_key")
+  @@index([userId], map: "ConversationMember_userId_idx")
+}
+
+model crmcontact {
+  id               String             @id
+  companyId        String
+  firstName        String?
+  lastName         String?
+  displayName      String
+  companyName      String?
+  email            String?
+  phone            String?
+  source           crmcontact_source  @default(MANUAL)
+  status           crmcontact_status  @default(NEW)
+  assignedToId     String?
+  lastContactAt    DateTime?
+  nextFollowUpAt   DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  conversation     conversation[]
+  user             user?              @relation(fields: [assignedToId], references: [id], map: "CRMContact_assignedToId_fkey")
+  company          company            @relation(fields: [companyId], references: [id], onDelete: Cascade, map: "CRMContact_companyId_fkey")
+  crmnote          crmnote[]
+  crmstatushistory crmstatushistory[]
+
+  @@index([assignedToId], map: "CRMContact_assignedToId_fkey")
+  @@index([companyId, assignedToId], map: "CRMContact_companyId_assignedToId_idx")
+  @@index([companyId, email], map: "CRMContact_companyId_email_idx")
+  @@index([companyId], map: "CRMContact_companyId_idx")
+  @@index([companyId, phone], map: "CRMContact_companyId_phone_idx")
+  @@index([companyId, source], map: "CRMContact_companyId_source_idx")
+  @@index([companyId, status], map: "CRMContact_companyId_status_idx")
+  @@index([companyId, updatedAt], map: "CRMContact_companyId_updatedAt_idx")
+}
+
+model crmimportbatch {
+  id           String                @id
+  companyId    String
+  importedById String?
+  source       crmimportbatch_source
+  fileName     String?
+  totalRecords Int                   @default(0)
+  createdCount Int                   @default(0)
+  updatedCount Int                   @default(0)
+  skippedCount Int                   @default(0)
+  errorCount   Int                   @default(0)
+  createdAt    DateTime              @default(now())
+  company      company               @relation(fields: [companyId], references: [id], onDelete: Cascade, map: "CRMImportBatch_companyId_fkey")
+  user         user?                 @relation(fields: [importedById], references: [id], map: "CRMImportBatch_importedById_fkey")
+
+  @@index([companyId], map: "CRMImportBatch_companyId_idx")
+  @@index([createdAt], map: "CRMImportBatch_createdAt_idx")
+  @@index([importedById], map: "CRMImportBatch_importedById_fkey")
+}
+
+model crmnote {
+  id         String       @id
+  companyId  String
+  contactId  String
+  authorId   String?
+  type       crmnote_type @default(GENERAL)
+  content    String       @db.Text
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime
+  user       user?        @relation(fields: [authorId], references: [id], map: "CRMNote_authorId_fkey")
+  company    company      @relation(fields: [companyId], references: [id], onDelete: Cascade, map: "CRMNote_companyId_fkey")
+  crmcontact crmcontact   @relation(fields: [contactId], references: [id], onDelete: Cascade, map: "CRMNote_contactId_fkey")
+
+  @@index([authorId], map: "CRMNote_authorId_idx")
+  @@index([companyId], map: "CRMNote_companyId_idx")
+  @@index([contactId], map: "CRMNote_contactId_idx")
+  @@index([createdAt], map: "CRMNote_createdAt_idx")
+}
+
+model crmstatushistory {
+  id          String                       @id
+  companyId   String
+  contactId   String
+  changedById String?
+  fromStatus  crmstatushistory_fromStatus?
+  toStatus    crmstatushistory_toStatus
+  note        String?                      @db.Text
+  createdAt   DateTime                     @default(now())
+  user        user?                        @relation(fields: [changedById], references: [id], map: "CRMStatusHistory_changedById_fkey")
+  company     company                      @relation(fields: [companyId], references: [id], onDelete: Cascade, map: "CRMStatusHistory_companyId_fkey")
+  crmcontact  crmcontact                   @relation(fields: [contactId], references: [id], onDelete: Cascade, map: "CRMStatusHistory_contactId_fkey")
+
+  @@index([changedById], map: "CRMStatusHistory_changedById_idx")
+  @@index([companyId], map: "CRMStatusHistory_companyId_idx")
+  @@index([contactId], map: "CRMStatusHistory_contactId_idx")
+  @@index([createdAt], map: "CRMStatusHistory_createdAt_idx")
+}
+
+model file {
+  id                String              @id
+  companyId         String?
+  uploadedById      String?
+  productId         String?
+  originalName      String
+  storedName        String
+  path              String
+  mimeType          String
+  size              Int
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  company           company?            @relation(fields: [companyId], references: [id], onDelete: Cascade, map: "File_companyId_fkey")
+  product           product?            @relation(fields: [productId], references: [id], onDelete: Cascade, map: "File_productId_fkey")
+  user              user?               @relation(fields: [uploadedById], references: [id], map: "File_uploadedById_fkey")
+  messageattachment messageattachment[]
+
+  @@index([companyId], map: "File_companyId_idx")
+  @@index([productId], map: "File_productId_idx")
+  @@index([uploadedById], map: "File_uploadedById_idx")
+}
+
+model message {
+  id                String              @id
+  conversationId    String
+  senderId          String?
+  type              message_type        @default(TEXT)
+  direction         message_direction   @default(OUTBOUND)
+  senderType        message_senderType  @default(USER)
+  externalKey       String?             @unique(map: "Message_externalKey_key")
+  content           String?             @db.Text
+  isEdited          Boolean             @default(false)
+  isDeleted         Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  conversation      conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade, map: "Message_conversationId_fkey")
+  user              user?               @relation(fields: [senderId], references: [id], onDelete: Cascade, map: "Message_senderId_fkey")
+  messageattachment messageattachment[]
+
+  @@index([conversationId], map: "Message_conversationId_idx")
+  @@index([createdAt], map: "Message_createdAt_idx")
+  @@index([senderId], map: "Message_senderId_idx")
+}
+
+model messageattachment {
+  id        String   @id
+  messageId String
+  fileId    String
+  createdAt DateTime @default(now())
+  file      file     @relation(fields: [fileId], references: [id], onDelete: Cascade, map: "MessageAttachment_fileId_fkey")
+  message   message  @relation(fields: [messageId], references: [id], onDelete: Cascade, map: "MessageAttachment_messageId_fkey")
+
+  @@unique([messageId, fileId], map: "MessageAttachment_messageId_fileId_key")
+  @@index([fileId], map: "MessageAttachment_fileId_idx")
+}
+
+model notification {
+  id        String   @id
+  userId    String
+  companyId String?
+  title     String
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  company   company? @relation(fields: [companyId], references: [id], onDelete: Cascade, map: "Notification_companyId_fkey")
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Notification_userId_fkey")
+
+  @@index([companyId], map: "Notification_companyId_idx")
+  @@index([isRead], map: "Notification_isRead_idx")
+  @@index([userId], map: "Notification_userId_idx")
+}
+
+model product {
+  id              String           @id
+  companyId       String
+  categoryId      String?
+  name            String
+  description     String?          @db.Text
+  sku             String?
+  unit            String?
+  price           Decimal?         @db.Decimal(15, 2)
+  currency        String?          @db.VarChar(10)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime
+  file            file[]
+  productcategory productcategory? @relation(fields: [categoryId], references: [id], map: "Product_categoryId_fkey")
+  company         company          @relation(fields: [companyId], references: [id], onDelete: Cascade, map: "Product_companyId_fkey")
+
+  @@index([categoryId], map: "Product_categoryId_idx")
+  @@index([companyId], map: "Product_companyId_idx")
+}
+
+model productcategory {
+  id        String    @id
+  name      String    @unique(map: "ProductCategory_name_key")
+  slug      String    @unique(map: "ProductCategory_slug_key")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime
+  product   product[]
+}
+
+model user {
+  id                 String               @id
+  companyId          String
+  firstName          String
+  lastName           String
+  email              String               @unique(map: "User_email_key")
+  passwordHash       String
+  role               user_role            @default(SALES)
+  isActive           Boolean              @default(true)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  auditlog           auditlog[]
+  conversationmember conversationmember[]
+  crmcontact         crmcontact[]
+  crmimportbatch     crmimportbatch[]
+  crmnote            crmnote[]
+  crmstatushistory   crmstatushistory[]
+  file               file[]
+  message            message[]
+  notification       notification[]
+  company            company              @relation(fields: [companyId], references: [id], onDelete: Cascade, map: "User_companyId_fkey")
+
+  @@index([companyId], map: "User_companyId_idx")
+}
+
+enum conversation_type {
+  DIRECT
+  GROUP
+  COMPANY
+}
+
+enum crmimportbatch_source {
+  WHATSAPP
+  EMAIL
+  MANUAL
+  IMPORT
+}
+
+enum message_type {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+}
+
+enum conversation_channel {
+  INTERNAL
+  WHATSAPP
+  EMAIL
+}
+
+enum crmnote_type {
+  GENERAL
+  FOLLOW_UP
+  CALL
+  MEETING
+  INTERNAL
+}
+
+enum crmstatushistory_fromStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  FOLLOW_UP
+  NEGOTIATION
+  WON
+  LOST
+  CLOSED
+}
+
+enum message_direction {
+  INBOUND
+  OUTBOUND
+  SYSTEM
+}
+
+enum crmstatushistory_toStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  FOLLOW_UP
+  NEGOTIATION
+  WON
+  LOST
+  CLOSED
+}
+
+enum message_senderType {
+  USER
+  CONTACT
+  SYSTEM
+}
+
+enum user_role {
+  SUPER_ADMIN
+  ADMIN
+  EXPORT_MANAGER
+  SALES
+  LOGISTICS
+  DOCUMENTATION
+  CUSTOMER_SUPPORT
+}
+
+enum crmcontact_source {
+  WHATSAPP
+  EMAIL
+  MANUAL
+  IMPORT
+}
+
+enum crmcontact_status {
+  NEW
+  CONTACTED
+  QUALIFIED
+  FOLLOW_UP
+  NEGOTIATION
+  WON
+  LOST
+  CLOSED
+}
