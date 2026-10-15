@@ -40,7 +40,7 @@ export const USER_ROLES = {
 export const ROLES = {
   [USER_ROLES.SUPER_ADMIN]: {
     label: "Super Admin",
-    color: "bg-blue-700 text-white",
+    color: "bg-primary text-white",
   },
 
   [USER_ROLES.STAFF]: {
@@ -50,7 +50,7 @@ export const ROLES = {
 
   [USER_ROLES.CLIENT]: {
     label: "Palmadex Client",
-    color: "bg-blue-600 text-white",
+    color: "bg-black text-white",
   },
 
   [USER_ROLES.SUPPLIER]: {
