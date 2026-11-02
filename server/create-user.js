@@ -1,17 +1,17 @@
 import bcrypt from "bcrypt";
 import prisma from "./src/config/prisma.js";
 
-const email = "admin@renamy.com";
-const password = "Password123";
+const email = "admin@palmadex.com";
+const password = "12345678";
 
 const company = await prisma.company.upsert({
   where: {
-    email: "admin@renamy.com",
+    email: "admin@palmadex.com",
   },
   update: {},
   create: {
-    name: "Renamy",
-    email: "admin@renamy.com",
+    name: "Palmadex",
+    email: "admin@palmadex.com",
   },
 });
 

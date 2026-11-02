@@ -76,6 +76,11 @@ export default function CRMContactDetails() {
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  // WhatsApp import state
+  const [importingWhatsApp, setImportingWhatsApp] = useState(false);
+  const [businessIdentifier, setBusinessIdentifier] = useState("");
+  const [clearingMessages, setClearingMessages] = useState(false);
+
 
  
   const loadContact = async () => {
@@ -871,19 +876,156 @@ export default function CRMContactDetails() {
         {/* =========================
             RIGHT COLUMN - MESSAGES
         ========================== */}
+        
         <div className="lg:col-span-2">
 
           <div className="bg-card border rounded-xl overflow-hidden">
 
-            <div className="border-b px-5 py-4">
-              <h3 className="font-semibold">
-                Messages
-              </h3>
+            
+<div className="border-b px-5 py-4 flex items-center justify-between gap-3">
+  <div>
+    <h3 className="font-semibold">
+      Messages
+    </h3>
 
-              <p className="text-sm text-muted-foreground">
-                Conversation with {contactName}
-              </p>
-            </div>
+    <p className="text-sm text-muted-foreground">
+      Conversation with {contactName}
+    </p>
+  </div>
+
+  <button
+    type="button"
+    disabled={clearingMessages || allMessages.length === 0}
+    onClick={async () => {
+      const confirmed = window.confirm(
+        `Clear all WhatsApp messages for ${contactName}? This cannot be undone.`
+      );
+
+      if (!confirmed) return;
+
+      try {
+        setClearingMessages(true);
+
+        const response = await fetch(
+          `${CRM_API_URL}/contacts/${id}/messages`,
+          {
+            method: "DELETE",
+            headers: getAuthHeaders(),
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.message || "Failed to clear messages."
+          );
+        }
+
+        alert(
+          `Successfully cleared ${result.deleted} messages.`
+        );
+
+        window.location.reload();
+      } catch (error) {
+        alert(error.message || "Failed to clear messages.");
+      } finally {
+        setClearingMessages(false);
+      }
+    }}
+    className="inline-flex items-center gap-2 rounded-md border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    {clearingMessages ? "Clearing..." : "Clear messages"}
+  </button>
+</div>
+
+
+{/* Import WhatsApp Chat */}
+<div className="border-b p-4 space-y-3">
+  <Input
+    value={businessIdentifier}
+    onChange={(e) => setBusinessIdentifier(e.target.value)}
+    placeholder="Your WhatsApp name or phone number"
+  />
+
+  <Input
+    type="file"
+    accept=".zip,application/zip"
+    disabled={importingWhatsApp}
+    onChange={async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!businessIdentifier.trim()) {
+        alert("Enter your WhatsApp name or phone number first.");
+        e.target.value = "";
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("businessIdentifier", businessIdentifier);
+
+      try {
+        setImportingWhatsApp(true);
+
+        const response = await fetch(
+  `${CRM_API_URL}/contacts/${id}/messages/import-whatsapp`,
+  {
+    method: "POST",
+headers: Object.fromEntries(
+  Object.entries(getAuthHeaders()).filter(
+    ([key]) => key.toLowerCase() !== "content-type"
+  )
+),    body: formData,
+  }
+);
+
+const responseText = await response.text();
+
+let result = {};
+
+try {
+  result = responseText ? JSON.parse(responseText) : {};
+} catch {
+  result.message =
+    responseText || "Server returned an empty response.";
+}
+
+if (!response.ok) {
+  console.error("WhatsApp import error:", {
+    status: response.status,
+    result,
+  });
+  console.log("WhatsApp import error message:", result.message);
+
+
+  throw new Error(
+    result.message || `Import failed (${response.status})`
+  );
+}
+
+alert(
+  `Imported ${result.imported} messages. ` +
+  `Skipped ${result.skipped} duplicates.`
+);
+
+        window.location.reload();
+      } catch (error) {
+        alert(error.message || "WhatsApp import failed.");
+      } finally {
+        setImportingWhatsApp(false);
+        e.target.value = "";
+      }
+    }}
+  />
+
+  <p className="text-xs text-muted-foreground">
+    {importingWhatsApp
+      ? "Importing WhatsApp chat..."
+      : "Upload your exported WhatsApp ZIP file."}
+  </p>
+</div>
 
             <div className="h-[500px] overflow-y-auto p-5 space-y-4">
 

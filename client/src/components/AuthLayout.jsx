@@ -32,7 +32,7 @@ export default function AuthLayout({
                         w-16
                         h-16
                         rounded-2xl
-                        bg-primary
+                        bg-sky-500
                         flex
                         items-center
                         justify-center

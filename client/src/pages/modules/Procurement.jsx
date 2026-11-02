@@ -1,45 +1,141 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { ShoppingBag, Plus, AlertCircle } from "lucide-react";
 import ModulePageShell from "@/components/modules/ModulePageShell";
-import { ShoppingBag, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import PurchaseRequestRow, { STATUS_LABELS } from "@/components/modules/procurement/PurchaseRequestRow";
+import RequestFormDialog from "@/components/modules/procurement/RequestFormDialog";
+import RequestDetailDialog from "@/components/modules/procurement/RequestDetailDialog";
+import { procurementApi, getErrorMessage } from "@/services/api";
 
-const requests = [
-  { id: "PR-0089", item: "Cocoa Beans — 500 tons", supplier: "Agro Harvest Ltd.", status: "Approved", date: "Jan 14, 2025" },
-  { id: "PR-0087", item: "Packaging Materials", supplier: "PackRight Industries", status: "Pending", date: "Jan 12, 2025" },
-  { id: "PR-0085", item: "Sesame Seeds — 300 tons", supplier: "Cassava Plus Industries", status: "In Progress", date: "Jan 10, 2025" },
-  { id: "PR-0082", item: "Cold Storage Lease", supplier: "Lagos Cold Chain", status: "Completed", date: "Jan 7, 2025" },
-];
-
-const statusStyles = {
-  Approved: "bg-primary/10 text-primary",
-  Pending: "bg-chart-4/10 text-chart-4",
-  "In Progress": "bg-chart-5/10 text-chart-5",
-  Completed: "bg-muted text-muted-foreground",
-};
+const PAGE_SIZE = 20;
+const ALL = "all";
 
 export default function Procurement() {
+  const [requests, setRequests] = useState([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState(ALL);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await procurementApi.list({
+        page,
+        limit: PAGE_SIZE,
+        status: status === ALL ? undefined : status,
+      });
+      setRequests(res.data);
+      setMeta(res.meta);
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to load purchase requests"));
+    } finally {
+      setLoading(false);
+    }
+  }, [page, status]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const openNew = () => { setEditing(null); setFormOpen(true); };
+  const openDetail = (request) => { setSelectedId(request.id); setDetailOpen(true); };
+  const openEdit = (request) => { setDetailOpen(false); setEditing(request); setFormOpen(true); };
+
+  const handleDeleted = () => {
+    if (requests.length === 1 && page > 1) setPage(page - 1);
+    else load();
+  };
+
   return (
     <ModulePageShell
       title="Procurement"
       description="Manage purchase requests and procurement workflows"
       icon={ShoppingBag}
-      actions={<Button size="sm"><Plus className="w-4 h-4 mr-1" /> New Request</Button>}
+      actions={
+        <Button size="sm" onClick={openNew}>
+          <Plus className="w-4 h-4 mr-1" /> New Request
+        </Button>
+      }
     >
-      <div className="space-y-3">
-        {requests.map((r, i) => (
-          <div key={i} className="bg-card rounded-xl border border px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:shadow-sm transition-shadow cursor-pointer">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-muted-foreground">{r.id}</span>
-                <Badge variant="secondary" className={statusStyles[r.status]}>{r.status}</Badge>
-              </div>
-              <p className="font-medium text-sm mt-1">{r.item}</p>
-              <p className="text-xs text-muted-foreground">{r.supplier} · {r.date}</p>
-            </div>
-          </div>
-        ))}
+      <div className="mb-4">
+        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
+          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All statuses</SelectItem>
+            {Object.entries(STATUS_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+
+      {loading ? (
+        <div className="space-y-3">
+          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+        </div>
+      ) : error ? (
+        <div className="bg-card rounded-xl border p-8 text-center space-y-3">
+          <AlertCircle className="w-8 h-8 mx-auto text-destructive" />
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <Button variant="outline" size="sm" onClick={load}>Try again</Button>
+        </div>
+      ) : requests.length === 0 ? (
+        <div className="bg-card rounded-xl border p-10 text-center space-y-3">
+          <ShoppingBag className="w-8 h-8 mx-auto text-muted-foreground" />
+          <h3 className="font-semibold">
+            {status === ALL ? "No purchase requests yet" : "No requests with this status"}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {status === ALL
+              ? "Create your first request to start the procurement workflow."
+              : "Try a different status filter."}
+          </p>
+          {status === ALL && (
+            <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-1" /> New Request</Button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {requests.map((r) => (
+            <PurchaseRequestRow key={r.id} request={r} onClick={() => openDetail(r)} />
+          ))}
+
+          {meta.totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
+              <span className="text-sm text-muted-foreground">Page {meta.page} of {meta.totalPages}</span>
+              <Button variant="outline" size="sm" disabled={page >= meta.totalPages} onClick={() => setPage(page + 1)}>Next</Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <RequestFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        request={editing}
+        onSaved={load}
+      />
+      <RequestDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        requestId={selectedId}
+        onChanged={load}
+        onEdit={openEdit}
+        onDeleted={handleDeleted}
+      />
     </ModulePageShell>
   );
 }

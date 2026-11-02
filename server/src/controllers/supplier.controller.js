@@ -54,13 +54,50 @@ function paginationValue(value, fallback, max) {
   return Math.min(number, max);
 }
 
+
 function pickWritableFields(body) {
-  return Object.fromEntries(
+  const data = Object.fromEntries(
     writableFields
       .filter((field) => body[field] !== undefined)
       .map((field) => [field, body[field]])
   );
+
+  // Normalize establishedDate
+  if (data.establishedDate !== undefined) {
+    if (!data.establishedDate) {
+      data.establishedDate = null;
+    } else {
+      const date = new Date(data.establishedDate);
+
+      if (Number.isNaN(date.getTime())) {
+        throw Object.assign(
+          new Error("Invalid established date."),
+          { status: 400 }
+        );
+      }
+
+      data.establishedDate = date;
+    }
+  }
+
+  // Normalize string fields that may arrive as arrays
+  const stringFields = [
+    "previousExportCountries",
+    "exportDestinations",
+    "logisticsCapabilities",
+    "tradeReferences",
+  ];
+
+  for (const field of stringFields) {
+    if (Array.isArray(data[field])) {
+      data[field] = data[field].join(", ");
+    }
+  }
+
+  return data;
 }
+
+
 
 function handleError(error, res, next) {
   if (error.code === "P2025") {

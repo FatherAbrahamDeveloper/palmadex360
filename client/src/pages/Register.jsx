@@ -81,7 +81,7 @@ export default function Register() {
 <AuthLayout
 icon={UserPlus}
 title="Create your account"
-subtitle="Join Palmadex 360"
+subtitle="Join Palmadex360"
 footer={
 <>
 Already have an account? <Link to="/login">Login</Link>

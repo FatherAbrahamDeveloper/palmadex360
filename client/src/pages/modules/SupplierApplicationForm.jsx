@@ -38,7 +38,7 @@ const sections = [
   },
   {
     title: "Contact information",
-    description: "How can the Renamy Connect team reach you?",
+    description: "How can the Palmadex 360 team reach you?",
     fields: [
       ["contactPerson", "Contact person's full name", "text", true],
       ["contactJobTitle", "Job title"],
@@ -313,7 +313,7 @@ export default function SupplierApplicationForm() {
           </h1>
 
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            Thank you for applying to become a Renamy Global Resources Ltd supplier.
+            Thank you for applying to become a Palmadex GIS supplier.
             Your application has been received and your information has been saved.
           </p>
 
@@ -331,11 +331,11 @@ export default function SupplierApplicationForm() {
         <div className="bg-primary px-6 py-8 text-primary-foreground md:px-9 md:py-10">
 <img
   src="/palmadexLogo.svg"
-  alt="Palmadex360 logo"
+  alt="Palmadex logo"
   className="mb-4 h-20 w-20 object-contain"
 />
           <p className="mb-2 text-sm font-medium opacity-90">
-            PALMADEX GIS  SUPPLIER NETWORK
+            PALMADEX GIS SUPPLIER NETWORK
           </p>
 
           <h1 className="text-2xl font-bold md:text-3xl">
@@ -477,7 +477,7 @@ export default function SupplierApplicationForm() {
             <span className="text-sm leading-6">
               I declare that the information provided in this application
               is accurate and complete to the best of my knowledge. I
-              understand that Renamy Connect may verify the information.
+              understand that Palmadex may verify the information.
               <span className="ml-1 font-semibold text-red-600">*</span>
             </span>
           </label>
@@ -494,7 +494,7 @@ export default function SupplierApplicationForm() {
             />
 
             <span className="text-sm leading-6">
-              I acknowledge that I have read the Palmadex GIS privacy
+              I acknowledge that I have read the Palmadex 360 privacy
               notice and understand how my business and contact information
               will be processed.
               <span className="ml-1 font-semibold text-red-600">*</span>

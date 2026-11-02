@@ -1,24 +1,5 @@
-import prisma from "../config/prisma.js";
 
-const supplierListSelect = {
-  id: true,
-  companyName: true,
-  tradingName: true,
-  country: true,
-  city: true,
-  status: true,
-  rating: true,
-  businessType: true,
-  createdAt: true,
-  updatedAt: true,
-  _count: {
-    select: {
-      products: {
-        where: { isActive: true },
-      },
-    },
-  },
-};
+import prisma from "../config/prisma.js";
 
 export async function listSuppliers({
   companyId,
@@ -58,19 +39,32 @@ export async function listSuppliers({
   const [items, total] = await prisma.$transaction([
     prisma.supplier.findMany({
       where,
-      select: supplierListSelect,
-      orderBy: { updatedAt: "desc" },
+      orderBy: {
+        updatedAt: "desc",
+      },
       skip: (page - 1) * pageSize,
       take: pageSize,
+      include: {
+        products: {
+          where: {
+            isActive: true,
+          },
+          select: {
+            id: true,
+          },
+        },
+      },
     }),
+
     prisma.supplier.count({ where }),
   ]);
 
   return {
-    items: items.map(({ _count, ...supplier }) => ({
+    items: items.map(({ products, ...supplier }) => ({
       ...supplier,
-      productCount: _count.products,
+      productCount: products.length,
     })),
+
     pagination: {
       page,
       pageSize,
@@ -82,17 +76,26 @@ export async function listSuppliers({
 
 export async function getSupplier({ companyId, supplierId }) {
   return prisma.supplier.findFirst({
-    where: { id: supplierId, companyId },
+    where: {
+      id: supplierId,
+      companyId,
+    },
     include: {
       products: {
-        orderBy: { createdAt: "desc" },
+        orderBy: {
+          createdAt: "desc",
+        },
       },
       application: true,
       documents: {
-        orderBy: { uploadedAt: "desc" },
+        orderBy: {
+          uploadedAt: "desc",
+        },
       },
       verificationHistory: {
-        orderBy: { createdAt: "desc" },
+        orderBy: {
+          createdAt: "desc",
+        },
         include: {
           changedBy: {
             select: {
@@ -107,12 +110,17 @@ export async function getSupplier({ companyId, supplierId }) {
   });
 }
 
-export async function createSupplier({ companyId, data }) {
+export async function createSupplier({
+  companyId,
+  data,
+}) {
   return prisma.supplier.create({
     data: {
       ...data,
       company: {
-        connect: { id: companyId },
+        connect: {
+          id: companyId,
+        },
       },
       status: "PENDING",
     },
@@ -128,8 +136,13 @@ export async function updateSupplier({
   data,
 }) {
   const existing = await prisma.supplier.findFirst({
-    where: { id: supplierId, companyId },
-    select: { id: true },
+    where: {
+      id: supplierId,
+      companyId,
+    },
+    select: {
+      id: true,
+    },
   });
 
   if (!existing) {
@@ -137,10 +150,39 @@ export async function updateSupplier({
   }
 
   return prisma.supplier.update({
-    where: { id: existing.id },
+    where: {
+      id: existing.id,
+    },
     data,
     include: {
       products: true,
+    },
+  });
+}
+
+export async function deleteSupplier({
+  companyId,
+  supplierId,
+}) {
+  const existing = await prisma.supplier.findFirst({
+    where: {
+      id: supplierId,
+      companyId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!existing) {
+    const error = new Error("Supplier not found.");
+    error.code = "P2025";
+    throw error;
+  }
+
+  return prisma.supplier.delete({
+    where: {
+      id: existing.id,
     },
   });
 }

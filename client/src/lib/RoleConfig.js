@@ -40,7 +40,7 @@ export const USER_ROLES = {
 export const ROLES = {
   [USER_ROLES.SUPER_ADMIN]: {
     label: "Super Admin",
-    color: "bg-primary text-white",
+color: "bg-[#008FD5] text-white",
   },
 
   [USER_ROLES.STAFF]: {
@@ -50,7 +50,7 @@ export const ROLES = {
 
   [USER_ROLES.CLIENT]: {
     label: "Palmadex Client",
-    color: "bg-black text-white",
+color: "bg-[#000] text-white",
   },
 
   [USER_ROLES.SUPPLIER]: {
@@ -68,7 +68,7 @@ export const ROLES = {
 export const MODULES = [
   {
     id: "crm",
-    label: "CRM",
+    label: "Client Mgmt (CRM)",
     icon: Users,
     path: "/crm",
     roles: [USER_ROLES.SUPER_ADMIN, USER_ROLES.STAFF],
@@ -100,7 +100,7 @@ export const MODULES = [
 
   {
     id: "orders",
-    label: "Export Order Mgmt",
+    label: "Export Order Management",
     icon: ShoppingCart,
     path: "/orders",
     roles: [
@@ -124,7 +124,7 @@ export const MODULES = [
 
   {
     id: "documents",
-    label: "Documentation Center",
+    label: "Documents & Media Center",
     icon: FileText,
     path: "/documents",
     roles: [
@@ -205,7 +205,7 @@ export const MODULES = [
 
   {
     id: "access",
-    label: "User & Access Mgmt",
+    label: "User & Access Management",
     icon: Settings,
     path: "/access",
     roles: [USER_ROLES.SUPER_ADMIN],

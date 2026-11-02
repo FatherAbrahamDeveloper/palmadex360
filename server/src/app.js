@@ -1,3 +1,4 @@
+
 import "dotenv/config";
 
 import express from "express";
@@ -12,10 +13,20 @@ import fileRoutes from "./routes/file.routes.js";
 import crmRoutes from "./routes/crm.routes.js";
 import supplierRoutes from "./routes/supplier.routes.js";
 
+import { authenticate } from "./middleware/auth.middleware.js";
+
+import productRoutes from "./routes/product.routes.js";
+import exportOrderRoutes from "./routes/exportOrder.routes.js";
+import shipmentRoutes from "./routes/shipment.routes.js";
+import warehouseRoutes from "./routes/warehouse.routes.js";
+import inventoryRoutes from "./routes/inventory.routes.js";
+import procurementRoutes from "./routes/procurement.routes.js";
+import financeRoutes from "./routes/finance.routes.js";
+import complianceRoutes from "./routes/compliance.routes.js";
+import globalSearchRoutes from "./routes/globalSearch.routes.js";
+
 const app = express();
 
-// Set FRONTEND_URLS in Railway to your actual Vercel frontend URL.
-// Multiple origins can be separated by commas.
 const allowedOrigins = [
   "http://localhost:5173",
   ...(process.env.FRONTEND_URLS || "")
@@ -27,10 +38,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin(origin, callback) {
-      // Allow requests without an Origin header, such as server-to-server calls.
-      if (!origin) {
-        return callback(null, true);
-      }
+      if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
@@ -43,12 +51,31 @@ app.use(
   })
 );
 
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: {
+      policy: "cross-origin",
+    },
+
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+
+        "frame-ancestors": [
+          "'self'",
+          "https://palmadex360.vercel.app",
+        ],
+      },
+    },
+  })
+);
+
 app.use(morgan("combined"));
 app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// General API health check
+// Health checks
 app.get("/api/v1/health", (req, res) => {
   res.status(200).json({
     success: true,
@@ -57,7 +84,6 @@ app.get("/api/v1/health", (req, res) => {
   });
 });
 
-// Database health check
 app.get("/api/v1/health/db", async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -67,12 +93,7 @@ app.get("/api/v1/health/db", async (req, res) => {
       message: "Database connection is healthy",
     });
   } catch (error) {
-    // Diagnostic details go to server logs, not the HTTP response.
-    console.error("Database health check failed:", {
-      name: error.name,
-      code: error.code,
-      message: error.message,
-    });
+    console.error("Database health check failed:", error);
 
     res.status(503).json({
       success: false,
@@ -81,13 +102,24 @@ app.get("/api/v1/health/db", async (req, res) => {
   }
 });
 
-// API routes
+// Existing routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/files", fileRoutes);
 app.use("/api/v1/crm", crmRoutes);
 app.use("/api/v1/suppliers", supplierRoutes);
 
-// Handle unknown routes
+// Advanced modules
+app.use("/api/v1/products", authenticate, productRoutes);
+app.use("/api/v1/export-orders", authenticate, exportOrderRoutes);
+app.use("/api/v1/shipments", authenticate, shipmentRoutes);
+app.use("/api/v1/warehouses", authenticate, warehouseRoutes);
+app.use("/api/v1/inventory", authenticate, inventoryRoutes);
+app.use("/api/v1/procurement", authenticate, procurementRoutes);
+app.use("/api/v1/finance", authenticate, financeRoutes);
+app.use("/api/v1/compliance", authenticate, complianceRoutes);
+app.use("/api/v1/search", globalSearchRoutes);
+
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -97,9 +129,7 @@ app.use((req, res) => {
 
 // Central error handler
 app.use((err, req, res, next) => {
-  if (res.headersSent) {
-    return next(err);
-  }
+  if (res.headersSent) return next(err);
 
   if (err.message === "Not allowed by CORS") {
     return res.status(403).json({
@@ -108,7 +138,7 @@ app.use((err, req, res, next) => {
     });
   }
 
-  console.error("API error:", err.message);
+  console.error("API error:", err);
 
   res.status(err.status || 500).json({
     success: false,

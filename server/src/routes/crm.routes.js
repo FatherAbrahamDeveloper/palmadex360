@@ -1,4 +1,6 @@
 import express from "express";
+import multer from "multer";
+
 
 import {
     getContacts,
@@ -12,11 +14,30 @@ import {
     deleteCRMNote,
     deleteCRMContact,
     getCRMContactMessages,
-    sendCRMContactMessage
+    sendCRMContactMessage,
+    importWhatsAppChat,
+    clearWhatsAppMessages,
+
 } from "../controllers/crm.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
+const whatsappUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024,
+    files: 1,
+  },
+  fileFilter: (req, file, cb) => {
+    const isZip =
+      file.originalname.toLowerCase().endsWith(".zip");
 
+    if (!isZip) {
+      return cb(new Error("Please upload a ZIP file."));
+    }
+
+    cb(null, true);
+  },
+});
 
 
 const router = express.Router();
@@ -99,6 +120,17 @@ router.post(
     "/contacts/:id/messages",
     authenticate,
     sendCRMContactMessage
+);
+router.post(
+  "/contacts/:id/messages/import-whatsapp",
+  authenticate,
+  whatsappUpload.single("file"),
+  importWhatsAppChat
+);
+router.delete(
+  "/contacts/:id/messages",
+  authenticate,
+  clearWhatsAppMessages
 );
 
 

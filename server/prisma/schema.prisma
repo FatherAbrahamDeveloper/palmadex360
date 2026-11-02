@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -108,6 +109,85 @@ enum SupplierProductForm {
   OTHER
 }
 
+enum ExportOrderStatus {
+  PENDING
+  PROCESSING
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+enum ShipmentStatus {
+  BOOKED
+  LOADING
+  AT_SEA
+  CUSTOMS
+  ARRIVED
+  CANCELLED
+}
+
+enum StockMovementType {
+  RECEIPT
+  ISSUE
+  ADJUSTMENT
+}
+
+enum PurchaseRequestStatus {
+  PENDING
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+  CHEQUE
+  CARD
+  OTHER
+}
+
+enum ExpenseCategory {
+  PROCUREMENT
+  LOGISTICS
+  SALARIES
+  UTILITIES
+  TAXES_DUTIES
+  MARKETING
+  OTHER
+}
+
+enum ComplianceStatus {
+  NOT_STARTED
+  DOCUMENTATION_PENDING
+  IN_REVIEW
+  COMPLIANT
+  ACTION_REQUIRED
+  EXPIRED
+}
+
+enum ComplianceRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ComplianceDocumentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
 model CRMContact {
   id        String @id @default(cuid())
   companyId String
@@ -137,6 +217,7 @@ model CRMContact {
   notes         CRMNote[]
   statusHistory CRMStatusHistory[]
   conversations Conversation[]
+  exportOrders  ExportOrder[]
 
   @@index([companyId])
   @@index([companyId, status])
@@ -201,17 +282,26 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users            User[]
-  products         Product[]
-  conversations    Conversation[]
-  files            File[]
-  notifications    Notification[]
-  auditLogs        AuditLog[]
-  crmContacts      CRMContact[]
-  crmNotes         CRMNote[]
-  crmStatusHistory CRMStatusHistory[]
-  crmImportBatches CRMImportBatch[]
-  suppliers        Supplier[]
+  users                 User[]
+  products              Product[]
+  conversations         Conversation[]
+  files                 File[]
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  crmContacts           CRMContact[]
+  crmNotes              CRMNote[]
+  crmStatusHistory      CRMStatusHistory[]
+  crmImportBatches      CRMImportBatch[]
+  suppliers             Supplier[]
+  exportOrders          ExportOrder[]
+  shipments             Shipment[]
+  warehouses            Warehouse[]
+  stockLevels           StockLevel[]
+  stockMovements        StockMovement[]
+  purchaseRequests      PurchaseRequest[]
+  invoices              Invoice[]
+  expenses              Expense[]
+  ComplianceRequirement ComplianceRequirement[]
 }
 
 model User {
@@ -226,19 +316,33 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  company                      Company                       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  uploadedFiles                File[]                        @relation("FileUploader")
-  sentMessages                 Message[]                     @relation("MessageSender")
-  conversationMembers          ConversationMember[]
-  notifications                Notification[]
-  auditLogs                    AuditLog[]                    @relation("AuditActor")
-  assignedCRMContacts          CRMContact[]                  @relation("CRMContactAssignee")
-  crmNotes                     CRMNote[]                     @relation("CRMNoteAuthor")
-  crmStatusChanges             CRMStatusHistory[]            @relation("CRMStatusChanger")
-  crmImportBatches             CRMImportBatch[]              @relation("CRMImportUser")
-  verifiedSuppliers            Supplier[]                    @relation("SupplierVerifier")
-  reviewedSupplierApplications SupplierApplication[]         @relation("SupplierApplicationReviewer")
-  supplierVerificationChanges  SupplierVerificationHistory[] @relation("SupplierVerificationActor")
+  company                        Company                       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedFiles                  File[]                        @relation("FileUploader")
+  sentMessages                   Message[]                     @relation("MessageSender")
+  conversationMembers            ConversationMember[]
+  notifications                  Notification[]
+  auditLogs                      AuditLog[]                    @relation("AuditActor")
+  assignedCRMContacts            CRMContact[]                  @relation("CRMContactAssignee")
+  crmNotes                       CRMNote[]                     @relation("CRMNoteAuthor")
+  crmStatusChanges               CRMStatusHistory[]            @relation("CRMStatusChanger")
+  crmImportBatches               CRMImportBatch[]              @relation("CRMImportUser")
+  verifiedSuppliers              Supplier[]                    @relation("SupplierVerifier")
+  reviewedSupplierApplications   SupplierApplication[]         @relation("SupplierApplicationReviewer")
+  supplierVerificationChanges    SupplierVerificationHistory[] @relation("SupplierVerificationActor")
+  createdExportOrders            ExportOrder[]                 @relation("ExportOrderCreator")
+  createdShipments               Shipment[]                    @relation("ShipmentCreator")
+  shipmentStatusChanges          ShipmentEvent[]               @relation("ShipmentEventActor")
+  stockMovements                 StockMovement[]               @relation("StockMovementActor")
+  createdPurchaseRequests        PurchaseRequest[]             @relation("PurchaseRequestCreator")
+  purchaseRequestChanges         PurchaseRequestEvent[]        @relation("PurchaseRequestEventActor")
+  createdInvoices                Invoice[]                     @relation("InvoiceCreator")
+  recordedPayments               InvoicePayment[]              @relation("PaymentRecorder")
+  createdExpenses                Expense[]                     @relation("ExpenseCreator")
+  complianceRequirements         ComplianceRequirement[]
+  assignedComplianceRequirements ComplianceRequirement[]       @relation("ComplianceAssignee")
+  createdComplianceRequirements  ComplianceRequirement[]       @relation("ComplianceCreator")
+  verifiedComplianceDocuments    ComplianceDocument[]          @relation("ComplianceDocumentVerifier")
+  complianceHistory              ComplianceHistory[]           @relation("ComplianceHistoryActor")
 
   @@index([companyId])
 }
@@ -254,25 +358,45 @@ model ProductCategory {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  companyId   String
-  categoryId  String?
+  id         String  @id @default(cuid())
+  companyId  String
+  categoryId String?
+
   name        String
-  description String?  @db.Text
-  sku         String?
-  unit        String?
-  price       Decimal? @db.Decimal(15, 2)
-  currency    String?  @db.VarChar(10)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  description String? @db.Text
+  sku         String? @db.VarChar(50)
 
-  company  Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  category ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  files    File[]
+  // Pricing (price is per `unit`, e.g. USD per ton)
+  unit           String?   @default("ton") @db.VarChar(30)
+  price          Decimal?  @db.Decimal(15, 2)
+  priceUpdatedAt DateTime?
+  currency       String?   @default("USD") @db.VarChar(10)
 
+  // Inventory / commercial info
+  stockQuantity        Decimal  @default(0) @db.Decimal(15, 3)
+  minimumOrderQuantity Decimal? @db.Decimal(15, 3)
+  hsCode               String?  @db.VarChar(20)
+  originCountry        String?  @default("Nigeria") @db.VarChar(100)
+  packaging            String?  @db.Text
+  specifications       String?  @db.Text
+
+  isNewListing Boolean @default(false)
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company      Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category     ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  files        File[]
+  exportOrders ExportOrder[]
+  stockLevels  StockLevel[]
+
+  @@unique([companyId, sku])
   @@index([companyId])
   @@index([categoryId])
+  @@index([companyId, isActive])
+  @@index([companyId, name])
 }
 
 model File {
@@ -288,11 +412,11 @@ model File {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  company    Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  uploadedBy User?    @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
-  product    Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  messageAttachments MessageAttachment[]
+  company             Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedBy          User?                @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  product             Product?             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  messageAttachments  MessageAttachment[]
+  complianceDocuments ComplianceDocument[]
 
   @@index([companyId])
   @@index([uploadedById])
@@ -505,6 +629,7 @@ model Supplier {
   application         SupplierApplication?
   documents           SupplierDocument[]
   verificationHistory SupplierVerificationHistory[]
+  purchaseRequests    PurchaseRequest[]
 
   @@index([companyId])
   @@index([companyId, status])
@@ -604,4 +729,396 @@ model SupplierVerificationHistory {
 
   @@index([supplierId, createdAt])
   @@index([changedById])
+}
+
+model ExportOrder {
+  id          String @id @default(cuid())
+  companyId   String
+  orderNumber String @db.VarChar(30) // e.g. EXP-2026-0001, generated server-side
+
+  customerName String
+  contactId    String? // optional link to an existing CRM contact
+
+  productId   String? // optional link to the catalog
+  productName String // snapshot, so old orders survive product edits/deletes
+  quantity    Decimal @db.Decimal(15, 3)
+  unit        String  @default("ton") @db.VarChar(30)
+
+  totalValue Decimal @db.Decimal(15, 2)
+  currency   String  @default("USD") @db.VarChar(10)
+
+  status ExportOrderStatus @default(PENDING)
+  notes  String?           @db.Text
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company   Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact   CRMContact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  product   Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  createdBy User?           @relation("ExportOrderCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  shipments ShipmentOrder[]
+  invoices  Invoice[]
+
+  @@unique([companyId, orderNumber])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+  @@index([contactId])
+  @@index([productId])
+}
+
+model Shipment {
+  id        String @id @default(cuid())
+  companyId String
+
+  shipmentNumber String @db.VarChar(30) // e.g. SHP-2026-0001, generated server-side
+
+  vesselName         String
+  voyageNumber       String? @db.VarChar(50)
+  shippingLine       String? @db.VarChar(100)
+  bookingNumber      String? @db.VarChar(50)
+  billOfLadingNumber String? @db.VarChar(50)
+
+  originPort      String // e.g. "Lagos, NG"
+  destinationPort String // e.g. "Rotterdam, NL"
+  etd             DateTime?
+  eta             DateTime?
+
+  containerCount Int @default(1)
+
+  status ShipmentStatus @default(BOOKED)
+  notes  String?        @db.Text
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("ShipmentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  orders ShipmentOrder[]
+  events ShipmentEvent[]
+
+  @@unique([companyId, shipmentNumber])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, eta])
+  @@index([companyId, createdAt])
+}
+
+model ShipmentOrder {
+  id            String   @id @default(cuid())
+  shipmentId    String
+  exportOrderId String
+  createdAt     DateTime @default(now())
+
+  shipment    Shipment    @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  exportOrder ExportOrder @relation(fields: [exportOrderId], references: [id], onDelete: Cascade)
+
+  @@unique([shipmentId, exportOrderId])
+  @@index([exportOrderId])
+}
+
+model ShipmentEvent {
+  id          String  @id @default(cuid())
+  shipmentId  String
+  changedById String?
+
+  fromStatus ShipmentStatus?
+  toStatus   ShipmentStatus
+  note       String?         @db.Text
+
+  createdAt DateTime @default(now())
+
+  shipment  Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  changedBy User?    @relation("ShipmentEventActor", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([shipmentId, createdAt])
+  @@index([changedById])
+}
+
+model Warehouse {
+  id        String @id @default(cuid())
+  companyId String
+
+  name    String  @db.VarChar(150)
+  code    String? @db.VarChar(20)
+  city    String? @db.VarChar(100)
+  state   String? @db.VarChar(100)
+  address String? @db.Text
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  stockLevels StockLevel[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model StockLevel {
+  id          String @id @default(cuid())
+  companyId   String
+  warehouseId String
+  productId   String
+
+  quantity     Decimal  @default(0) @db.Decimal(15, 3)
+  unit         String   @default("ton") @db.VarChar(30)
+  capacity     Decimal? @db.Decimal(15, 3) // max this warehouse holds of this product
+  reorderLevel Decimal? @db.Decimal(15, 3) // low-stock alert at or below this
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  movements StockMovement[]
+
+  @@unique([warehouseId, productId])
+  @@index([companyId])
+  @@index([companyId, warehouseId])
+  @@index([productId])
+}
+
+model StockMovement {
+  id           String @id @default(cuid())
+  companyId    String
+  stockLevelId String
+
+  type           StockMovementType
+  quantityChange Decimal           @db.Decimal(15, 3) // signed: + in, - out
+  balanceAfter   Decimal           @db.Decimal(15, 3)
+
+  reference String? @db.VarChar(100) // e.g. an order or shipment number
+  note      String? @db.Text
+
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  stockLevel StockLevel @relation(fields: [stockLevelId], references: [id], onDelete: Cascade)
+  createdBy  User?      @relation("StockMovementActor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([stockLevelId, createdAt])
+  @@index([companyId, createdAt])
+  @@index([createdById])
+}
+
+model PurchaseRequest {
+  id        String @id @default(cuid())
+  companyId String
+
+  requestNumber String @db.VarChar(30) // e.g. PR-2026-0001, generated server-side
+
+  itemName      String
+  quantity      Decimal? @db.Decimal(15, 3)
+  unit          String?  @db.VarChar(30)
+  estimatedCost Decimal? @db.Decimal(15, 2)
+  currency      String   @default("NGN") @db.VarChar(10)
+
+  supplierId   String? // optional link to the Supplier module
+  supplierName String // snapshot, or a typed-in name for one-off vendors
+
+  requiredByDate DateTime?
+  notes          String?   @db.Text
+
+  status PurchaseRequestStatus @default(PENDING)
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier  Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  createdBy User?     @relation("PurchaseRequestCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  events PurchaseRequestEvent[]
+
+  @@unique([companyId, requestNumber])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+  @@index([supplierId])
+}
+
+model PurchaseRequestEvent {
+  id                String  @id @default(cuid())
+  purchaseRequestId String
+  changedById       String?
+
+  fromStatus PurchaseRequestStatus?
+  toStatus   PurchaseRequestStatus
+  note       String?                @db.Text
+
+  createdAt DateTime @default(now())
+
+  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+  changedBy       User?           @relation("PurchaseRequestEventActor", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([purchaseRequestId, createdAt])
+  @@index([changedById])
+}
+
+model Invoice {
+  id        String @id @default(cuid())
+  companyId String
+
+  invoiceNumber String @db.VarChar(30) // e.g. INV-2026-0001, generated server-side
+
+  customerName  String
+  exportOrderId String? // optional link to an export order
+
+  issueDate DateTime
+  dueDate   DateTime
+
+  currency   String  @default("USD") @db.VarChar(10)
+  amount     Decimal @db.Decimal(15, 2)
+  amountPaid Decimal @default(0) @db.Decimal(15, 2)
+
+  status InvoiceStatus @default(PENDING) // "Overdue" is derived from dueDate, never stored
+  notes  String?       @db.Text
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  exportOrder ExportOrder? @relation(fields: [exportOrderId], references: [id], onDelete: SetNull)
+  createdBy   User?        @relation("InvoiceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  payments InvoicePayment[]
+
+  @@unique([companyId, invoiceNumber])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, dueDate])
+  @@index([companyId, issueDate])
+  @@index([exportOrderId])
+}
+
+model InvoicePayment {
+  id        String @id @default(cuid())
+  invoiceId String
+
+  amount    Decimal       @db.Decimal(15, 2)
+  method    PaymentMethod @default(BANK_TRANSFER)
+  paidAt    DateTime
+  reference String?       @db.VarChar(100)
+  note      String?       @db.Text
+
+  recordedById String?
+  createdAt    DateTime @default(now())
+
+  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  recordedBy User?   @relation("PaymentRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId, paidAt])
+  @@index([recordedById])
+}
+
+model Expense {
+  id        String @id @default(cuid())
+  companyId String
+
+  expenseDate DateTime
+  category    ExpenseCategory @default(OTHER)
+  description String
+  vendor      String?
+  amount      Decimal         @db.Decimal(15, 2)
+  currency    String          @default("USD") @db.VarChar(10)
+  reference   String?         @db.VarChar(100)
+  notes       String?         @db.Text
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("ExpenseCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([companyId, expenseDate])
+  @@index([companyId, category])
+}
+
+model ComplianceRequirement {
+  id           String              @id @default(cuid())
+  companyId    String
+  title        String
+  region       String
+  authority    String?
+  description  String?             @db.Text
+  status       ComplianceStatus    @default(NOT_STARTED)
+  riskLevel    ComplianceRiskLevel @default(MEDIUM)
+  completion   Int                 @default(0)
+  assignedToId String?
+  createdById  String?
+  dueDate      DateTime?
+  expiryDate   DateTime?
+  notes        String?             @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assignedTo User?   @relation("ComplianceAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy  User?   @relation("ComplianceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  documents ComplianceDocument[]
+  history   ComplianceHistory[]
+  User      User?                @relation(fields: [userId], references: [id])
+  userId    String?
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([assignedToId])
+  @@index([dueDate])
+  @@index([expiryDate])
+}
+
+model ComplianceDocument {
+  id            String                   @id @default(cuid())
+  requirementId String
+  fileId        String
+  status        ComplianceDocumentStatus @default(PENDING)
+  expiryDate    DateTime?
+  verifiedById  String?
+  verifiedAt    DateTime?
+  notes         String?                  @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requirement ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  file        File                  @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  verifiedBy  User?                 @relation("ComplianceDocumentVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@unique([requirementId, fileId])
+  @@index([requirementId])
+  @@index([fileId])
+}
+
+model ComplianceHistory {
+  id             String            @id @default(cuid())
+  requirementId  String
+  userId         String?
+  action         String
+  details        String?           @db.Text
+  previousStatus ComplianceStatus?
+  newStatus      ComplianceStatus?
+
+  createdAt DateTime @default(now())
+
+  requirement ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  user        User?                 @relation("ComplianceHistoryActor", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([requirementId])
+  @@index([userId])
+  @@index([createdAt])
 }
