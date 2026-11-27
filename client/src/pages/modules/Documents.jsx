@@ -21,7 +21,9 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import api from "@/services/api";
+import api, { customerApi } from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
+import { canAccess } from "@/lib/roleConfig";
 
 const FOLDERS = [
   {
@@ -63,7 +65,6 @@ const DOCUMENT_EXTENSIONS = new Set([
   "ppt", "pptx", "txt", "rtf", "odt", "ods",
   "odp", "html", "htm", "xml", "json",
 ]);
-
 
 function getFileCategory(file) {
   const mime = (file.mimeType || "").toLowerCase();
@@ -121,15 +122,17 @@ function getDate(date) {
     : parsed.toLocaleDateString();
 }
 function getFilePreviewUrl(file) {
-  if (!file?.id) return "";
+  if (!file?.url) return "";
 
-  const baseURL = api.defaults.baseURL;
+  const baseURL = api.defaults.baseURL || window.location.origin;
 
-  if (!baseURL) {
-    throw new Error("API base URL is not configured.");
-  }
+  const url = new URL(
+    file.url,
+    `${baseURL.replace(/\/+$/, "")}/`
+  ).href;
 
-  return `/files/${encodeURIComponent(file.id)}/content`;
+
+  return url;
 }
 
 export default function Documents() {
@@ -138,6 +141,15 @@ export default function Documents() {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const { user } = useAuth();
+  const canUpload = canAccess(user, "documents", "EDIT");
+  const canDelete = canAccess(user, "documents", "FULL");
+  const [customers, setCustomers] = useState([]);
+  const [shareWith, setShareWith] = useState("");
+
+  useEffect(() => {
+    customerApi.options().then(setCustomers).catch(() => setCustomers([]));
+  }, []);
   const [deletingId, setDeletingId] = useState(null);
   const [activeFolder, setActiveFolder] = useState("documents");
   const [searchTerm, setSearchTerm] = useState("");
@@ -147,40 +159,6 @@ const [currentPage, setCurrentPage] = useState(1);
 const ITEMS_PER_PAGE = 20;
 const [previewUrl, setPreviewUrl] = useState("");
 const [previewError, setPreviewError] = useState("");
-// Close preview and release browser memory
-const closePreview = () => {
-  if (previewUrl.startsWith("blob:")) {
-    URL.revokeObjectURL(previewUrl);
-  }
-
-  setPreviewFile(null);
-  setPreviewUrl("");
-  setPreviewError("");
-};
-
-// Load file securely with Axios authentication
-const handlePreview = async (file) => {
-  try {
-    setPreviewFile(file);
-    setPreviewUrl("");
-    setPreviewError("");
-
-    const response = await api.get(
-      getFilePreviewUrl(file),
-      { responseType: "blob" }
-    );
-
-    const blobUrl = URL.createObjectURL(response.data);
-    setPreviewUrl(blobUrl);
-  } catch (error) {
-    console.error("File preview failed:", error);
-
-    setPreviewError(
-      error.response?.data?.message ||
-      "Unable to load this file. Please try again."
-    );
-  }
-};
 
 useEffect(() => {
   if (!previewFile) return;
@@ -302,6 +280,9 @@ const currentFolder = FOLDERS.find(
         formData.append("files", file);
       });
 
+      // Optional: share the upload with a customer so it appears in their portal.
+      if (shareWith) formData.append("customerId", shareWith);
+
       const response = await api.post("/files/upload", formData);
 
       if (response.data.files?.length) {
@@ -367,7 +348,18 @@ const currentFolder = FOLDERS.find(
             onChange={handleFileChange}
           />
 
-          <Button
+          {canUpload && customers.length > 0 && (
+            <select
+              value={shareWith}
+              onChange={(e) => setShareWith(e.target.value)}
+              aria-label="Share uploads with a customer"
+              className="h-9 rounded-md border bg-background px-2 text-sm max-w-[220px]"
+            >
+              <option value="">Internal only</option>
+              {customers.map((c) => <option key={c.id} value={c.id}>Share with {c.name}</option>)}
+            </select>
+          )}
+          {canUpload && <Button
             size="sm"
             onClick={handleUploadClick}
             disabled={uploading || loading}
@@ -378,7 +370,7 @@ const currentFolder = FOLDERS.find(
               <Upload className="w-4 h-4 mr-2" />
             )}
             {uploading ? "Uploading..." : "Upload Files"}
-          </Button>
+          </Button>}
         </>
       }
     >
@@ -533,7 +525,7 @@ const currentFolder = FOLDERS.find(
             return (
               <div
                 key={file.id}
-                className="bg-card rounded-xl border px-4 sm:px-5 py-4 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow"
+                className="surface px-4 sm:px-5 py-4 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -563,8 +555,11 @@ const currentFolder = FOLDERS.find(
                   <Button
   variant="ghost"
   size="icon"
-onClick={() => handlePreview(file)}
-
+onClick={() => {
+  setPreviewFile(file);
+  setPreviewUrl(getFilePreviewUrl(file));
+  setPreviewError("");
+}}
   disabled={!file.url}
   title="Preview file"
   aria-label={`Preview ${file.originalName || "file"}`}
@@ -588,7 +583,7 @@ onClick={() => handlePreview(file)}
                     </Button>
                   )}
 
-                  <Button
+                  {(canDelete || file.uploadedById === user?.id) && <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDelete(file)}
@@ -601,7 +596,7 @@ onClick={() => handlePreview(file)}
                     ) : (
                       <Trash2 className="w-4 h-4 text-destructive" />
                     )}
-                  </Button>
+                  </Button>}
                 </div>
               </div>
             );
@@ -672,8 +667,11 @@ onClick={() => handlePreview(file)}
           type="button"
           variant="outline"
           size="sm"
-          onClick={closePreview}
-
+          onClick={() => {
+            setPreviewFile(null);
+            setPreviewUrl("");
+            setPreviewError("");
+          }}
         >
           Close
         </Button>
@@ -720,9 +718,6 @@ onClick={() => handlePreview(file)}
   src={previewUrl}
   title={previewFile.originalName || "PDF preview"}
   className="h-[70vh] w-full rounded-lg border bg-white"
-  onLoad={() => {
-    console.log("PDF iframe loaded:", previewUrl);
-  }}
           />
         ) : (
           <div className="py-10 text-center">

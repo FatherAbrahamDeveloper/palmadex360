@@ -1,60 +1,76 @@
+import fs from "fs";
 import * as authService from "../services/auth.service.js";
+import * as v from "../validators/auth.validator.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
-export const register = async (req, res) => {
+const ctx = (req) => ({ ip: req.ip });
 
-    try {
+export const register = asyncHandler(async (req, res) => {
+  const input = v.registerSchema.parse(req.body);
+  const result = await authService.register(input, ctx(req));
+  res.status(201).json(result);
+});
 
-        const result = await authService.register(req.body);
+export const login = asyncHandler(async (req, res) => {
+  res.json(await authService.login(v.loginSchema.parse(req.body), ctx(req)));
+});
 
-        res.status(201).json(result);
+export const loginTwoFactor = asyncHandler(async (req, res) => {
+  res.json(await authService.loginWithTwoFactor(v.twoFactorLoginSchema.parse(req.body), ctx(req)));
+});
 
-    }
+export const verifyEmail = asyncHandler(async (req, res) => {
+  res.json(await authService.verifyEmail(v.tokenSchema.parse(req.body)));
+});
 
-    catch (err) {
+export const resendVerification = asyncHandler(async (req, res) => {
+  res.json(await authService.resendVerification(v.emailOnlySchema.parse(req.body)));
+});
 
-        res.status(400).json({
+export const forgotPassword = asyncHandler(async (req, res) => {
+  res.json(await authService.forgotPassword(v.emailOnlySchema.parse(req.body)));
+});
 
-            message: err.message
+export const resetPassword = asyncHandler(async (req, res) => {
+  res.json(await authService.resetPassword(v.resetPasswordSchema.parse(req.body)));
+});
 
-        });
+export const me = asyncHandler(async (req, res) => {
+  res.json(await authService.me(req.user));
+});
 
-    }
+export const updateProfile = asyncHandler(async (req, res) => {
+  res.json(await authService.updateProfile(req.user, v.profileSchema.parse(req.body)));
+});
 
-};
+export const changePassword = asyncHandler(async (req, res) => {
+  res.json(await authService.changePassword(req.user, v.changePasswordSchema.parse(req.body)));
+});
 
-export const login = async (req, res) => {
+export const logoutEverywhere = asyncHandler(async (req, res) => {
+  res.json(await authService.logoutEverywhere(req.user));
+});
 
-    try {
+export const setupTwoFactor = asyncHandler(async (req, res) => {
+  res.json(await authService.setupTwoFactor(req.user));
+});
 
-        const result = await authService.login(
+export const enableTwoFactor = asyncHandler(async (req, res) => {
+  res.json(await authService.enableTwoFactor(req.user, v.twoFactorCodeSchema.parse(req.body)));
+});
 
-            req.body.email,
+export const disableTwoFactor = asyncHandler(async (req, res) => {
+  res.json(await authService.disableTwoFactor(req.user, v.disableTwoFactorSchema.parse(req.body)));
+});
 
-            req.body.password
+export const enrollFace = asyncHandler(async (req, res) => {
+  res.json(await authService.enrollFace(req.user, v.faceImageSchema.parse(req.body)));
+});
 
-        );
-
-        res.json(result);
-
-    }
-
-    catch (err) {
-
-        res.status(401).json({
-
-            message: err.message
-
-        });
-
-    }
-
-};
-
-export const me = async (req, res) => {
-
-    res.status(200).json({
-        success: true,
-        user: req.user
-    });
-
-};
+export const myFace = asyncHandler(async (req, res) => {
+  const photo = await authService.faceFileFor(req.user.id);
+  if (!photo) return res.status(404).json({ message: "No face photo on file" });
+  res.setHeader("Content-Type", photo.mimeType);
+  res.setHeader("Cache-Control", "private, no-store");
+  res.send(photo.data);
+});

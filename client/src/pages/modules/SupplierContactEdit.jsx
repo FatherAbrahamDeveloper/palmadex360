@@ -311,7 +311,7 @@ export default function SupplierContactEdit({
         )}
 
         {groups.map((group) => (
-          <section key={group.title} className="rounded-xl border bg-card p-5">
+          <section key={group.title} className="surface p-5">
             <h2 className="mb-5 font-semibold">{group.title}</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {group.fields.map((field) => (

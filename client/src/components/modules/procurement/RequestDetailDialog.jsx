@@ -12,7 +12,11 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { procurementApi, getErrorMessage } from "@/services/api";
+import { procurementApi, qaApi, getErrorMessage } from "@/services/api";
+import { ClipboardCheck, Plus } from "lucide-react";
+import { QA_STATUS } from "@/components/modules/quality/qaShared";
+import { useAuth } from "@/context/AuthContext";
+import { canAccess } from "@/lib/roleConfig";
 import {
   STATUS_LABELS, statusStyles, formatDate, formatItem, formatMoney,
 } from "./PurchaseRequestRow";
@@ -36,7 +40,10 @@ function Detail({ label, children }) {
   );
 }
 
-export default function RequestDetailDialog({ open, onOpenChange, requestId, onChanged, onEdit, onDeleted }) {
+export default function RequestDetailDialog({ open, onOpenChange, requestId, onChanged, onEdit, onDeleted, onOpenCheck, onNewCheck }) {
+  const { user } = useAuth();
+  const canWrite = canAccess(user, "procurement", "EDIT");
+  const [checks, setChecks] = useState([]);
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
@@ -49,8 +56,12 @@ export default function RequestDetailDialog({ open, onOpenChange, requestId, onC
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await procurementApi.get(id);
+      const [res, qc] = await Promise.all([
+        procurementApi.get(id),
+        qaApi.list({ purchaseRequestId: id, limit: 50 }).catch(() => ({ data: [] })),
+      ]);
       setRequest(res.data);
+      setChecks(qc.data);
     } catch (err) {
       setLoadError(getErrorMessage(err, "Failed to load the request"));
     } finally {
@@ -81,7 +92,7 @@ export default function RequestDetailDialog({ open, onOpenChange, requestId, onC
       toast.success(`Request ${STATUS_LABELS[status].toLowerCase()}`);
       onChanged();
     } catch (err) {
-      toast.error(getErrorMessage(err, "Could not update the status"));
+      toast.error(getErrorMessage(err, "Could not update the status"), { duration: 9000 });
       load(request.id); // refresh in case someone else changed it
     } finally {
       setBusy(false);
@@ -147,7 +158,31 @@ export default function RequestDetailDialog({ open, onOpenChange, requestId, onC
                 </div>
               )}
 
-              {request.allowedStatuses.length > 0 && (
+              <div className="space-y-2 rounded-md border p-3">
+                <div className="flex items-center justify-between">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold"><ClipboardCheck className="h-4 w-4" /> Quality checks</p>
+                  {canWrite && onNewCheck && <Button size="sm" variant="outline" onClick={() => onNewCheck(request.id)}><Plus className="mr-1 h-3.5 w-3.5" /> New check</Button>}
+                </div>
+                {checks.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No QA/QC checklist recorded for this request yet.</p>
+                ) : (
+                  <ul className="divide-y">
+                    {checks.map((c) => (
+                      <li key={c.id}>
+                        <button type="button" className="flex w-full items-center justify-between gap-2 py-2 text-left text-sm hover:text-primary" onClick={() => onOpenCheck?.(c.id)}>
+                          <span className="min-w-0 truncate"><span className="font-mono text-xs text-muted-foreground">{c.inspectionNumber}</span> {c.containerNumber || c.commodity}</span>
+                          <Badge variant="secondary" className={QA_STATUS[c.status].className}>{QA_STATUS[c.status].label}</Badge>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {checks.some((c) => c.status === "FAILED" && !c.supersededBy) && (
+                  <p className="text-xs text-red-700">A failed quality check is blocking completion. Contact the administrator to review it.</p>
+                )}
+              </div>
+
+              {request.allowedStatuses.length > 0 && canWrite && (
                 <div className="space-y-2 rounded-md border p-3">
                   <Label>Note (required when rejecting)</Label>
                   <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />

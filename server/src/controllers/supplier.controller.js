@@ -56,47 +56,39 @@ function paginationValue(value, fallback, max) {
 
 
 function pickWritableFields(body) {
-  const data = Object.fromEntries(
-    writableFields
-      .filter((field) => body[field] !== undefined)
-      .map((field) => [field, body[field]])
-  );
-
-  // Normalize establishedDate
-  if (data.establishedDate !== undefined) {
-    if (!data.establishedDate) {
-      data.establishedDate = null;
-    } else {
-      const date = new Date(data.establishedDate);
-
-      if (Number.isNaN(date.getTime())) {
-        throw Object.assign(
-          new Error("Invalid established date."),
-          { status: 400 }
-        );
-      }
-
-      data.establishedDate = date;
-    }
-  }
-
-  // Normalize string fields that may arrive as arrays
   const stringFields = [
     "previousExportCountries",
     "exportDestinations",
     "logisticsCapabilities",
+    "preferredPaymentTerms",
     "tradeReferences",
   ];
 
-  for (const field of stringFields) {
-    if (Array.isArray(data[field])) {
-      data[field] = data[field].join(", ");
-    }
-  }
+  return Object.fromEntries(
+    writableFields
+      .filter((field) => body[field] !== undefined)
+      .map((field) => {
+        let value = body[field];
 
-  return data;
+        if (stringFields.includes(field) && Array.isArray(value)) {
+          value = value.join(", ");
+        }
+
+        if (field === "establishedDate") {
+          if (!value || !String(value).trim()) {
+            value = null;
+          } else {
+            const date = new Date(value);
+            value = Number.isNaN(date.getTime())
+              ? null
+              : date.toISOString();
+          }
+        }
+
+        return [field, value];
+      })
+  );
 }
-
 
 
 function handleError(error, res, next) {

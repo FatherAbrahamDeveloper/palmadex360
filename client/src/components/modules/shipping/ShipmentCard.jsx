@@ -35,7 +35,7 @@ export default function ShipmentCard({ shipment, onClick }) {
       tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick()}
-      className="bg-card rounded-xl border p-5 hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="surface p-5 hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex items-center justify-between mb-3">
         <span className="font-mono text-xs text-muted-foreground">{shipment.shipmentNumber}</span>

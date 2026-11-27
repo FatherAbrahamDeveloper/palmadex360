@@ -118,13 +118,13 @@ export default function Inventory() {
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-36 w-full rounded-xl" />)}
         </div>
       ) : error ? (
-        <div className="bg-card rounded-xl border p-8 text-center space-y-3">
+        <div className="surface p-8 text-center space-y-3">
           <AlertCircle className="w-8 h-8 mx-auto text-destructive" />
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button variant="outline" size="sm" onClick={load}>Try again</Button>
         </div>
       ) : items.length === 0 ? (
-        <div className="bg-card rounded-xl border p-10 text-center space-y-3">
+        <div className="surface p-10 text-center space-y-3">
           <Warehouse className="w-8 h-8 mx-auto text-muted-foreground" />
           {warehouses.length === 0 ? (
             <>

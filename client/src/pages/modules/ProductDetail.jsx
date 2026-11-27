@@ -183,7 +183,7 @@ export default function ProductDetail() {
         </div>
       )}
 
-      <div className="bg-card rounded-xl border p-6 space-y-6">
+      <div className="surface p-6 space-y-6">
         <section>
           <h3 className="font-semibold mb-3">General</h3>
           <div className="grid gap-4 md:grid-cols-2">

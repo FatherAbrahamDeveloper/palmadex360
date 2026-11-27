@@ -86,7 +86,7 @@ function invoiceWhere(companyId, { search, status }) {
   else if (OPEN.includes(status)) Object.assign(where, { status, dueDate: { gte: today } });
   else if (status) where.status = status;
   if (search) {
-    where.OR = [{ invoiceNumber: { contains: search } }, { customerName: { contains: search } }];
+    where.OR = [{ invoiceNumber: { contains: search, mode: "insensitive" } }, { customerName: { contains: search, mode: "insensitive" } }];
   }
   return where;
 }
@@ -265,9 +265,9 @@ export const financeService = {
     if (category) where.category = category;
     if (search) {
       where.OR = [
-        { description: { contains: search } },
-        { vendor: { contains: search } },
-        { reference: { contains: search } },
+        { description: { contains: search, mode: "insensitive" } },
+        { vendor: { contains: search, mode: "insensitive" } },
+        { reference: { contains: search, mode: "insensitive" } },
       ];
     }
     const { items, total } = await repo.listExpenses({

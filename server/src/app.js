@@ -1,20 +1,20 @@
-
-import "dotenv/config";
-
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
-import prisma from "./config/prisma.js";
+
+import { authenticate } from "./middleware/auth.middleware.js";
+import { requireAccess, internalOnly } from "./middleware/access.middleware.js";
+import { trackActivity } from "./middleware/activity.middleware.js";
+import { requireFaceEnrollment } from "./middleware/face.middleware.js";
+import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
+import { rateLimit } from "./middleware/rateLimit.middleware.js";
 
 import authRoutes from "./routes/auth.routes.js";
 import fileRoutes from "./routes/file.routes.js";
 import crmRoutes from "./routes/crm.routes.js";
 import supplierRoutes from "./routes/supplier.routes.js";
-
-import { authenticate } from "./middleware/auth.middleware.js";
-
 import productRoutes from "./routes/product.routes.js";
 import exportOrderRoutes from "./routes/exportOrder.routes.js";
 import shipmentRoutes from "./routes/shipment.routes.js";
@@ -24,27 +24,32 @@ import procurementRoutes from "./routes/procurement.routes.js";
 import financeRoutes from "./routes/finance.routes.js";
 import complianceRoutes from "./routes/compliance.routes.js";
 import globalSearchRoutes from "./routes/globalSearch.routes.js";
+import userRoutes from "./routes/user.routes.js";
+import accessRoutes from "./routes/access.routes.js";
+import customerRoutes from "./routes/customer.routes.js";
+import portalRoutes from "./routes/portal.routes.js";
+import communicationRoutes from "./routes/communication.routes.js";
+import supportRoutes from "./routes/support.routes.js";
+import knowledgeRoutes from "./routes/knowledge.routes.js";
+import { dashboardRoutes, activityRoutes, notificationRoutes, reportRoutes } from "./routes/insights.routes.js";
+
+export const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://palmadex360.vercel.app",
+  ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean) : []),
+];
 
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  ...(process.env.FRONTEND_URLS || "")
-    .split(",")
-    .map((url) => url.trim().replace(/\/+$/, ""))
-    .filter(Boolean),
-];
+// Render (like most hosts) runs the app behind a proxy; this makes req.ip the real client address for rate limiting.
+app.set("trust proxy", 1);
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      console.warn(`CORS blocked origin: ${origin}`);
+      // Allow requests with no origin, such as Postman/server-side requests
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
@@ -53,100 +58,64 @@ app.use(
 
 app.use(
   helmet({
-    crossOriginResourcePolicy: {
-      policy: "cross-origin",
-    },
-
+    crossOriginResourcePolicy: { policy: "cross-origin" },
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-
-        "frame-ancestors": [
-          "'self'",
-          "https://palmadex360.vercel.app",
-        ],
+        "frame-ancestors": ["'self'", ...allowedOrigins],
       },
     },
   })
 );
-
-app.use(morgan("combined"));
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+// Face photos are sent as base64 during sign-up, so allow a few MB.
+app.use(express.json({ limit: "4mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 app.use(cookieParser());
 
-// Health checks
 app.get("/api/v1/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Palmadex360 API is running",
-    version: "1.0.0",
-  });
+  res.status(200).json({ success: true, message: "Palmadex 360 API is running", version: "1.1.0" });
 });
 
-app.get("/api/v1/health/db", async (req, res) => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
+// General safety net against abuse; per-route limits are stricter (auth, messaging).
+app.use("/api/v1", rateLimit({ windowMs: 60_000, max: 600 }));
 
-    res.status(200).json({
-      success: true,
-      message: "Database connection is healthy",
-    });
-  } catch (error) {
-    console.error("Database health check failed:", error);
-
-    res.status(503).json({
-      success: false,
-      message: "Database connection unavailable",
-    });
-  }
-});
-
-// Existing routes
+// Public and session routes
 app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/files", fileRoutes);
-app.use("/api/v1/crm", crmRoutes);
-app.use("/api/v1/suppliers", supplierRoutes);
 
-// Advanced modules
-app.use("/api/v1/products", authenticate, productRoutes);
-app.use("/api/v1/export-orders", authenticate, exportOrderRoutes);
-app.use("/api/v1/shipments", authenticate, shipmentRoutes);
-app.use("/api/v1/warehouses", authenticate, warehouseRoutes);
-app.use("/api/v1/inventory", authenticate, inventoryRoutes);
-app.use("/api/v1/procurement", authenticate, procurementRoutes);
-app.use("/api/v1/finance", authenticate, financeRoutes);
-app.use("/api/v1/compliance", authenticate, complianceRoutes);
-app.use("/api/v1/search", globalSearchRoutes);
+// Everything below needs a signed-in user who has completed face registration.
+const protect = [authenticate, requireFaceEnrollment];
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "API endpoint not found",
-  });
-});
+app.use("/api/v1/files", fileRoutes); // files do their own checks (signed links, portal sharing)
+app.use("/api/v1/crm", ...protect, internalOnly, requireAccess("crm"), trackActivity("CRMContact"), crmRoutes);
+app.use("/api/v1/suppliers", trackActivity("Supplier"), supplierRoutes); // public /apply lives here
+app.use("/api/v1/products", ...protect, internalOnly, requireAccess("products"), trackActivity("Product"), productRoutes);
+app.use("/api/v1/export-orders", ...protect, internalOnly, requireAccess("orders"), trackActivity("ExportOrder"), exportOrderRoutes);
+app.use("/api/v1/shipments", ...protect, internalOnly, requireAccess("shipping"), trackActivity("Shipment"), shipmentRoutes);
+app.use("/api/v1/warehouses", ...protect, internalOnly, requireAccess("inventory"), trackActivity("Warehouse"), warehouseRoutes);
+app.use("/api/v1/inventory", ...protect, internalOnly, requireAccess("inventory"), trackActivity("StockLevel"), inventoryRoutes);
+// Deleting a draft quality check is an everyday action: EDIT is enough for that one path.
+const procurementAccess = (req, res, next) =>
+  req.method === "DELETE" && req.path.startsWith("/qa/inspections/") ? requireAccess("procurement", "EDIT")(req, res, next) : requireAccess("procurement")(req, res, next);
+// Quality checks log their own, more specific activity entries (qa.service.js).
+const trackProcurement = (req, res, next) => (req.path.startsWith("/qa/") ? next() : trackActivity("PurchaseRequest")(req, res, next));
+app.use("/api/v1/procurement", ...protect, internalOnly, procurementAccess, trackProcurement, procurementRoutes);
+app.use("/api/v1/finance", ...protect, internalOnly, requireAccess("finance"), trackActivity((req) => (req.path.startsWith("/expenses") ? "Expense" : "Invoice")), financeRoutes);
+app.use("/api/v1/compliance", ...protect, internalOnly, requireAccess("compliance"), trackActivity("ComplianceRequirement"), complianceRoutes);
+app.use("/api/v1/customers", ...protect, trackActivity("Customer"), customerRoutes);
+app.use("/api/v1/portal", ...protect, portalRoutes);
+app.use("/api/v1/communication", ...protect, communicationRoutes);
+app.use("/api/v1/support", ...protect, supportRoutes);
+app.use("/api/v1/knowledge", ...protect, trackActivity("KnowledgeArticle"), knowledgeRoutes);
+app.use("/api/v1/users", ...protect, userRoutes);
+app.use("/api/v1/access", ...protect, accessRoutes);
+app.use("/api/v1/search", ...protect, globalSearchRoutes);
+app.use("/api/v1/dashboard", ...protect, dashboardRoutes);
+app.use("/api/v1/activity", ...protect, activityRoutes);
+app.use("/api/v1/notifications", authenticate, notificationRoutes);
+app.use("/api/v1/reports", ...protect, reportRoutes);
 
-// Central error handler
-app.use((err, req, res, next) => {
-  if (res.headersSent) return next(err);
-
-  if (err.message === "Not allowed by CORS") {
-    return res.status(403).json({
-      success: false,
-      message: "Origin not allowed",
-    });
-  }
-
-  console.error("API error:", err);
-
-  res.status(err.status || 500).json({
-    success: false,
-    message:
-      err.status && err.status < 500
-        ? err.message
-        : "Internal server error",
-  });
-});
+app.use("/api/v1", notFoundHandler);
+app.use(errorHandler);
 
 export default app;

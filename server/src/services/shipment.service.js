@@ -1,5 +1,10 @@
 import { shipmentRepository as repo } from "../repositories/shipment.repository.js";
+import { shipmentStatusChanged } from "./customerNotify.service.js";
 import { HttpError } from "./product.service.js";
+import { blockingFailures, blockedMessage } from "./qa.service.js";
+
+// Statuses that mean the goods are being loaded or have left: a failed quality check blocks them.
+const LOADING_OR_LATER = ["LOADING", "AT_SEA", "CUSTOMS", "ARRIVED"];
 
 const toDto = (s) => ({
   id: s.id,
@@ -46,12 +51,12 @@ function buildWhere(companyId, { search, status, exportOrderId }) {
   if (exportOrderId) where.orders = { some: { exportOrderId } };
   if (search) {
     where.OR = [
-      { shipmentNumber: { contains: search } },
-      { vesselName: { contains: search } },
-      { originPort: { contains: search } },
-      { destinationPort: { contains: search } },
-      { bookingNumber: { contains: search } },
-      { billOfLadingNumber: { contains: search } },
+      { shipmentNumber: { contains: search, mode: "insensitive" } },
+      { vesselName: { contains: search, mode: "insensitive" } },
+      { originPort: { contains: search, mode: "insensitive" } },
+      { destinationPort: { contains: search, mode: "insensitive" } },
+      { bookingNumber: { contains: search, mode: "insensitive" } },
+      { billOfLadingNumber: { contains: search, mode: "insensitive" } },
     ];
   }
   return where;
@@ -139,13 +144,22 @@ export const shipmentService = {
       data.orders = { deleteMany: {}, create: ids.map((exportOrderId) => ({ exportOrderId })) };
     }
 
+    if (fields.status && fields.status !== existing.status && LOADING_OR_LATER.includes(fields.status)) {
+      const failures = await blockingFailures(companyId, { shipmentId: id });
+      if (failures.length) throw new HttpError(409, blockedMessage(failures, `Moving this shipment to ${fields.status.replace("_", " ").toLowerCase()}`));
+    }
+
     if (fields.status && fields.status !== existing.status) {
       data.events = {
         create: { fromStatus: existing.status, toStatus: fields.status, changedById: userId },
       };
     }
 
-    return toDto(await repo.update(id, data));
+    const updated = await repo.update(id, data);
+    if (fields.status && fields.status !== existing.status) {
+      shipmentStatusChanged(companyId, id, existing.status, fields.status).catch((e) => console.error("NOTIFY ERROR:", e.message));
+    }
+    return toDto(updated);
   },
 
   async remove(companyId, id) {

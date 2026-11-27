@@ -1,11 +1,8 @@
 import { productRepository } from "../repositories/product.repository.js";
 
-export class HttpError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-  }
-}
+import { HttpError } from "../utils/httpError.js";
+
+export { HttpError };
 
 const num = (v) => (v === null || v === undefined ? null : Number(v));
 
@@ -55,9 +52,9 @@ function buildWhere(companyId, { search, categoryId, status }) {
 
   if (search) {
     where.OR = [
-      { name: { contains: search } },
-      { sku: { contains: search } },
-      { description: { contains: search } },
+      { name: { contains: search, mode: "insensitive" } },
+      { sku: { contains: search, mode: "insensitive" } },
+      { description: { contains: search, mode: "insensitive" } },
     ];
   }
 

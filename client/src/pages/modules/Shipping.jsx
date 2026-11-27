@@ -1,15 +1,23 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Ship, Plus, AlertCircle } from "lucide-react";
+import { Ship, Plus, AlertCircle, Search } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/context/AuthContext";
+import { canAccess } from "@/lib/roleConfig";
 import ModulePageShell from "@/components/modules/ModulePageShell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import ShipmentCard from "@/components/modules/shipping/ShipmentCard";
 import ShipmentFormDialog from "@/components/modules/shipping/ShipmentFormDialog";
-import { shipmentApi, getErrorMessage } from "@/services/api"; // adjust path
+import { shipmentApi, getErrorMessage } from "@/services/api";
 
 const PAGE_SIZE = 20;
 
 export default function Shipping() {
+  const { user } = useAuth();
+  const canEdit = canAccess(user, "shipping", "EDIT");
+  const [params] = useSearchParams();
+  const [search, setSearch] = useState(params.get("q") || "");
   const [shipments, setShipments] = useState([]);
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [page, setPage] = useState(1);
@@ -22,7 +30,7 @@ export default function Shipping() {
     setLoading(true);
     setError(null);
     try {
-      const res = await shipmentApi.list({ page, limit: PAGE_SIZE });
+      const res = await shipmentApi.list({ page, limit: PAGE_SIZE, search: search.trim() || undefined });
       setShipments(res.data);
       setMeta(res.meta);
     } catch (err) {
@@ -30,11 +38,14 @@ export default function Shipping() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, search]);
 
   useEffect(() => {
-    load();
+    const t = setTimeout(load, 250);
+    return () => clearTimeout(t);
   }, [load]);
+
+  useEffect(() => setPage(1), [search]);
 
   const openNew = () => { setEditing(null); setDialogOpen(true); };
   const openEdit = (shipment) => { setEditing(shipment); setDialogOpen(true); };
@@ -49,24 +60,28 @@ export default function Shipping() {
       title="Shipping & Logistics"
       description="Track shipments and logistics operations"
       icon={Ship}
-      actions={
+      actions={canEdit && (
         <Button size="sm" onClick={openNew}>
           <Plus className="w-4 h-4 mr-1" /> New Shipment
         </Button>
-      }
+      )}
     >
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter by shipment number, vessel or port" className="pl-9" aria-label="Filter shipments" />
+      </div>
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-44 w-full rounded-xl" />)}
         </div>
       ) : error ? (
-        <div className="bg-card rounded-xl border p-8 text-center space-y-3">
+        <div className="surface p-8 text-center space-y-3">
           <AlertCircle className="w-8 h-8 mx-auto text-destructive" />
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button variant="outline" size="sm" onClick={load}>Try again</Button>
         </div>
       ) : shipments.length === 0 ? (
-        <div className="bg-card rounded-xl border p-10 text-center space-y-3">
+        <div className="surface p-10 text-center space-y-3">
           <Ship className="w-8 h-8 mx-auto text-muted-foreground" />
           <h3 className="font-semibold">No shipments yet</h3>
           <p className="text-sm text-muted-foreground">Create your first shipment to start tracking cargo.</p>

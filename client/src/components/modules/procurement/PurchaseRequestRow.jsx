@@ -49,7 +49,7 @@ export default function PurchaseRequestRow({ request, onClick }) {
       tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick()}
-      className="bg-card rounded-xl border px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:shadow-sm transition-shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="surface px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:shadow-sm transition-shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="min-w-0">
         <div className="flex items-center gap-2">

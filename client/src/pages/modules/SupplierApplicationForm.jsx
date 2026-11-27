@@ -313,7 +313,7 @@ export default function SupplierApplicationForm() {
           </h1>
 
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            Thank you for applying to become a Palmadex GIS supplier.
+            Thank you for applying to become a Palmadex Global Integrated Services Ltd supplier.
             Your application has been received and your information has been saved.
           </p>
 
@@ -330,12 +330,12 @@ export default function SupplierApplicationForm() {
       <header className="overflow-hidden rounded-2xl border bg-card shadow-sm">
         <div className="bg-primary px-6 py-8 text-primary-foreground md:px-9 md:py-10">
 <img
-  src="/palmadexLogo.svg"
-  alt="Palmadex logo"
+  src="/palmadex-icon.png"
+  alt="Palmadex 360 logo"
   className="mb-4 h-20 w-20 object-contain"
 />
           <p className="mb-2 text-sm font-medium opacity-90">
-            PALMADEX GIS SUPPLIER NETWORK
+            PALMADEX GLOBAL INTEGRATED SERVICES · SUPPLIER NETWORK
           </p>
 
           <h1 className="text-2xl font-bold md:text-3xl">
@@ -477,7 +477,7 @@ export default function SupplierApplicationForm() {
             <span className="text-sm leading-6">
               I declare that the information provided in this application
               is accurate and complete to the best of my knowledge. I
-              understand that Palmadex may verify the information.
+              understand that Palmadex 360 may verify the information.
               <span className="ml-1 font-semibold text-red-600">*</span>
             </span>
           </label>

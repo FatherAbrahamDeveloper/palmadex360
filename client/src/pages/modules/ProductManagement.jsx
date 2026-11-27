@@ -179,7 +179,7 @@ export default function ProductManagement() {
         </div>
       )}
 
-      <div className="bg-card rounded-xl border overflow-hidden">
+      <div className="surface overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">

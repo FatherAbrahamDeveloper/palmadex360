@@ -70,7 +70,7 @@ export default function SummaryCards({ refreshKey }) {
         {cards.map((c) => {
           const Icon = c.icon;
           return (
-            <div key={c.label} className="bg-card rounded-xl border p-5">
+            <div key={c.label} className="surface p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Icon className="w-4 h-4 text-primary" />
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">{c.label}</span>

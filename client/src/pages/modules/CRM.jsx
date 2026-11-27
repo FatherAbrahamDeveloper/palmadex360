@@ -295,7 +295,7 @@ export default function CRM() {
     >
       {/* Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-card rounded-xl border p-4 shadow-sm flex items-center justify-between">
+        <div className="surface p-4 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Contacts</p>
             <p className="text-2xl font-bold mt-1">{metrics.total}</p>
@@ -305,7 +305,7 @@ export default function CRM() {
           </div>
         </div>
 
-        <div className="bg-card rounded-xl border p-4 shadow-sm flex items-center justify-between">
+        <div className="surface p-4 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">New Leads</p>
             <p className="text-2xl font-bold mt-1">{metrics.newLeads}</p>
@@ -315,7 +315,7 @@ export default function CRM() {
           </div>
         </div>
 
-        <div className="bg-card rounded-xl border p-4 shadow-sm flex items-center justify-between">
+        <div className="surface p-4 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Qualified Leads</p>
             <p className="text-2xl font-bold mt-1">{metrics.qualified}</p>
@@ -325,7 +325,7 @@ export default function CRM() {
           </div>
         </div>
 
-        <div className="bg-card rounded-xl border p-4 shadow-sm flex items-center justify-between">
+        <div className="surface p-4 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Won Deals</p>
             <p className="text-2xl font-bold mt-1">{metrics.wonDeals}</p>
@@ -390,7 +390,7 @@ export default function CRM() {
 
       {/* Add Contact Modal / Drawer Form */}
       {showAddContact && (
-        <div className="mb-6 rounded-xl border bg-card p-6 shadow-md transition-all">
+        <div className="mb-6 surface p-6 shadow-md transition-all">
           <form onSubmit={createContact}>
             <div className="flex items-center justify-between pb-4 mb-4 border-b">
               <div>

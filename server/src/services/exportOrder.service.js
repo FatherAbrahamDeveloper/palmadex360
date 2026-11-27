@@ -1,5 +1,6 @@
 import { exportOrderRepository as repo } from "../repositories/exportOrder.repository.js";
 import { HttpError } from "./product.service.js";
+import { orderStatusChanged } from "./customerNotify.service.js";
 
 const PROGRESS = { PENDING: 10, PROCESSING: 30, IN_TRANSIT: 65, DELIVERED: 100, CANCELLED: 0 };
 
@@ -9,6 +10,8 @@ const toDto = (o) => ({
   customerName: o.customerName,
   contactId: o.contactId,
   contact: o.contact || null,
+  customerId: o.customerId,
+  customer: o.customer || null,
   productId: o.productId,
   product: o.product || null,
   productName: o.productName,
@@ -30,14 +33,15 @@ async function generateOrderNumber(companyId) {
   return `${prefix}${String(Number.isNaN(next) ? 1 : next).padStart(4, "0")}`;
 }
 
-function buildWhere(companyId, { search, status }) {
+function buildWhere(companyId, { search, status, customerId }) {
   const where = { companyId };
   if (status) where.status = status;
+  if (customerId) where.customerId = customerId;
   if (search) {
     where.OR = [
-      { orderNumber: { contains: search } },
-      { customerName: { contains: search } },
-      { productName: { contains: search } },
+      { orderNumber: { contains: search, mode: "insensitive" } },
+      { customerName: { contains: search, mode: "insensitive" } },
+      { productName: { contains: search, mode: "insensitive" } },
     ];
   }
   return where;
@@ -50,6 +54,12 @@ async function resolveLinks(companyId, data) {
     if (!product) throw new HttpError(400, "Selected product was not found");
     if (!data.productName) data.productName = product.name;
     if (!data.unit && product.unit) data.unit = product.unit;
+  }
+  if (data.customerId) {
+    const customer = await repo.findCustomerById(companyId, data.customerId);
+    if (!customer) throw new HttpError(400, "Selected customer was not found");
+    if (!data.customerName) data.customerName = customer.name;
+    if (!data.contactId && customer.contactId) data.contactId = customer.contactId;
   }
   if (data.contactId) {
     const contact = await repo.findContactById(companyId, data.contactId);
@@ -97,7 +107,9 @@ export const exportOrderService = {
     const existing = await repo.findById(companyId, id);
     if (!existing) throw new HttpError(404, "Export order not found");
     const data = await resolveLinks(companyId, { ...input });
-    return toDto(await repo.update(id, data));
+    const updated = await repo.update(id, data);
+    orderStatusChanged(updated, existing.status)?.catch?.((e) => console.error("NOTIFY ERROR:", e.message));
+    return toDto(updated);
   },
 
   async remove(companyId, id) {

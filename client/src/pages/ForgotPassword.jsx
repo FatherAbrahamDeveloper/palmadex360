@@ -1,73 +1,49 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { Mail, Loader2, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import { authApi, getErrorMessage } from "@/services/api";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
+  const [sent, setSent] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
 
-  const handleSubmit = async (e) => {
+  async function submit(e) {
     e.preventDefault();
+    setError("");
     setLoading(true);
     try {
-      await base44.auth.resetPasswordRequest(email);
-    } catch {
-      // Always show success regardless
+      setSent((await authApi.forgotPassword(email)).message);
+    } catch (err) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
-      setSent(true);
     }
-  };
+  }
 
   return (
-    <AuthLayout
-      icon={Mail}
-      title="Reset password"
-      subtitle="We'll send you a link to reset it"
-      footer={
-        <Link to="/login" className="text-primary font-medium hover:underline">
-          <ArrowLeft className="w-3 h-3 inline mr-1" />Back to log in
-        </Link>
-      }
-    >
+    <AuthLayout title="Reset your password" subtitle="We will email you a link to choose a new one" footer={<Link to="/login" className="text-primary hover:underline">Back to sign in</Link>}>
       {sent ? (
-        <p className="text-sm text-foreground text-center">
-          If an account exists with that email, you'll receive a password reset link shortly.
-        </p>
+        <div className="space-y-3 text-center">
+          <MailCheck className="mx-auto h-12 w-12 text-primary" />
+          <p className="text-sm text-muted-foreground">{sent} The link expires in 1 hour.</p>
+        </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={submit} className="space-y-4">
+          {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">{error}</div>}
           <div className="space-y-2">
-            <Label htmlFor="email">Email address</Label>
+            <Label htmlFor="email">Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                autoFocus
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 h-12"
-                required
-              />
+              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <Input id="email" type="email" autoComplete="email" className="pl-10" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
           </div>
-          <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              "Send reset link"
-            )}
-          </Button>
+          <Button type="submit" className="w-full" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Sending" /> : "Send reset link"}</Button>
         </form>
       )}
     </AuthLayout>

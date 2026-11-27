@@ -108,25 +108,17 @@ export async function submit(req, res, next) {
     }
 
     // 4. Find the company that owns supplier applications.
-    const companyId = process.env.SUPPLIER_APPLICATION_COMPANY_ID;
-
-    if (!companyId) {
-      return res.status(500).json({
-        success: false,
-        message:
-          "Supplier application is not configured. Set SUPPLIER_APPLICATION_COMPANY_ID.",
-      });
-    }
-
-    const company = await prisma.company.findUnique({
-      where: { id: companyId },
-      select: { id: true },
-    });
+    // SUPPLIER_APPLICATION_COMPANY_ID (or DEFAULT_COMPANY_ID) if set, otherwise the
+    // first company, so a fresh single-company install works without extra setup.
+    const configuredId = process.env.SUPPLIER_APPLICATION_COMPANY_ID || process.env.DEFAULT_COMPANY_ID;
+    const company =
+      (configuredId && (await prisma.company.findUnique({ where: { id: configuredId }, select: { id: true } }))) ||
+      (await prisma.company.findFirst({ orderBy: { createdAt: "asc" }, select: { id: true } }));
 
     if (!company) {
       return res.status(500).json({
         success: false,
-        message: "The configured supplier company was not found.",
+        message: "Supplier applications are not open yet. Please try again later.",
       });
     }
 

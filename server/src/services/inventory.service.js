@@ -50,8 +50,8 @@ function buildWhere(companyId, { search, warehouseId, productId }) {
   if (productId) where.productId = productId;
   if (search) {
     where.OR = [
-      { product: { name: { contains: search } } },
-      { warehouse: { name: { contains: search } } },
+      { product: { name: { contains: search, mode: "insensitive" } } },
+      { warehouse: { name: { contains: search, mode: "insensitive" } } },
     ];
   }
   return where;

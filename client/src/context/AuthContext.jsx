@@ -1,126 +1,74 @@
-import {
-    createContext,
-    useContext,
-    useEffect,
-    useState
-} from "react";
-
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import authService from "../services/auth.service";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    const [user, setUser] = useState(null);
-
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-
-        initialize();
-
-    }, []);
-
-    async function initialize() {
-
-        const token = localStorage.getItem("token");
-
-        if (!token) {
-
-            setLoading(false);
-
-            return;
-
-        }
-
-        try {
-
-            const response = await authService.me();
-
-            setUser(response.user);
-
-        }
-
-        catch (err) {
-
-            console.error(err);
-
-            localStorage.removeItem("token");
-
-            setUser(null);
-
-        }
-
-        finally {
-
-            setLoading(false);
-
-        }
-
+  const refresh = useCallback(async () => {
+    try {
+      const res = await authService.me();
+      setUser(res?.user || null);
+      return res?.user || null;
+    } catch {
+      authService.logout();
+      setUser(null);
+      return null;
     }
+  }, []);
 
-    async function login(email, password) {
+  useEffect(() => {
+    refresh().finally(() => setLoading(false));
+  }, [refresh]);
 
-        const response = await authService.login(email, password);
+  // The API asks for face registration: reload the user so the gate shows.
+  useEffect(() => {
+    const onFace = () => refresh();
+    window.addEventListener("palmadex:face-required", onFace);
+    return () => window.removeEventListener("palmadex:face-required", onFace);
+  }, [refresh]);
 
-        localStorage.setItem("token", response.token);
+  const startSession = (res) => {
+    authService.setToken(res.token);
+    setUser(res.user);
+    return res;
+  };
 
-        setUser(response.user);
+  // Returns { twoFactorRequired, challengeToken } when a code is still needed.
+  async function login(email, password) {
+    const res = await authService.login(email, password);
+    if (res.twoFactorRequired) return res;
+    return startSession(res);
+  }
 
-        return response;
+  async function loginTwoFactor(challengeToken, code) {
+    return startSession(await authService.loginTwoFactor(challengeToken, code));
+  }
 
-    }
+  // New accounts wait for email verification and approval, so usually no session starts here.
+  async function register(data) {
+    const res = await authService.register(data);
+    if (res.token) startSession(res);
+    return res;
+  }
 
-    async function register(data) {
-
-        const response = await authService.register(data);
-
-        localStorage.setItem("token", response.token);
-
-        setUser(response.user);
-
-        return response;
-
-    }
-
-   function logout() {
-    localStorage.removeItem("token");
+  function logout() {
+    authService.logout();
     setUser(null);
     window.location.href = "/login";
-}
+  }
 
-    return (
-
-        <AuthContext.Provider
-
-            value={{
-
-                user,
-
-                loading,
-
-                login,
-
-                register,
-
-                logout,
-
-                isAuthenticated: !!user
-
-            }}
-
-        >
-
-            {children}
-
-        </AuthContext.Provider>
-
-    );
-
+  return (
+    <AuthContext.Provider
+      value={{ user, loading, login, loginTwoFactor, register, logout, refresh, setUser, startSession, isAuthenticated: !!user }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-
-    return useContext(AuthContext);
-
+  return useContext(AuthContext);
 }

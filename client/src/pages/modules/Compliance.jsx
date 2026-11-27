@@ -268,7 +268,7 @@ const loadItems = useCallback(async () => {
               return (
                 <div
                   key={item.id}
-                  className="group bg-card rounded-xl border p-4 sm:p-5 hover:border-primary/30 transition-colors"
+                  className="group surface p-4 sm:p-5 hover:border-primary/30 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button

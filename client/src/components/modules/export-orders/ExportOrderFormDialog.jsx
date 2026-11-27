@@ -14,17 +14,20 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { exportOrderApi, getErrorMessage } from "@/services/api"; // adjust path
+import { exportOrderApi, customerApi, getErrorMessage } from "@/services/api";
 import { STATUS_LABELS } from "./ExportOrderCard";
 
 const CUSTOM = "custom";
 
+const NO_CUSTOMER = "none";
+
 const EMPTY = {
-  customerName: "", productId: CUSTOM, productName: "", quantity: "", unit: "ton",
+  customerId: NO_CUSTOMER, customerName: "", productId: CUSTOM, productName: "", quantity: "", unit: "ton",
   totalValue: "", currency: "USD", status: "PENDING", notes: "",
 };
 
 const fromOrder = (o) => ({
+  customerId: o.customerId || NO_CUSTOMER,
   customerName: o.customerName,
   productId: o.productId || CUSTOM,
   productName: o.productId ? "" : o.productName,
@@ -60,6 +63,7 @@ export default function ExportOrderFormDialog({ open, onOpenChange, order, onSav
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [products, setProducts] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -69,6 +73,7 @@ export default function ExportOrderFormDialog({ open, onOpenChange, order, onSav
     setForm(order ? fromOrder(order) : EMPTY);
     setErrors({});
     exportOrderApi.productOptions().then(setProducts).catch(() => setProducts([]));
+    customerApi.options().then(setCustomers).catch(() => setCustomers([]));
   }, [open, order]);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -89,7 +94,9 @@ export default function ExportOrderFormDialog({ open, onOpenChange, order, onSav
     if (Object.keys(found).length) return;
 
     const custom = form.productId === CUSTOM;
+    const linked = form.customerId !== NO_CUSTOMER;
     const payload = {
+      customerId: linked ? form.customerId : null,
       customerName: form.customerName.trim(),
       productId: custom ? null : form.productId,
       productName: custom ? form.productName.trim() : undefined,
@@ -146,7 +153,20 @@ export default function ExportOrderFormDialog({ open, onOpenChange, order, onSav
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="Customer" error={errors.customerName}>
+            <Field label="Portal customer">
+              <Select
+                value={form.customerId}
+                onValueChange={(v) => setForm((f) => ({ ...f, customerId: v, customerName: v === NO_CUSTOMER ? f.customerName : customers.find((c) => c.id === v)?.name || f.customerName }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_CUSTOMER}>Not linked (customer can't see it in the portal)</SelectItem>
+                  {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field label="Customer name on the order" error={errors.customerName}>
               <Input value={form.customerName} onChange={set("customerName")} placeholder="e.g. Global Foods Inc." />
             </Field>
 

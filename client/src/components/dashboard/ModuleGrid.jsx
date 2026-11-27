@@ -1,16 +1,18 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { getModulesForRole } from "@/lib/RoleConfig";
+import { getModulesForUser } from "@/lib/roleConfig";
+import { useAuth } from "@/context/AuthContext";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function ModuleGrid({ role }) {
-  const modules = getModulesForRole(role);
+export default function ModuleGrid() {
+  const { user } = useAuth();
+  const modules = getModulesForUser(user);
 
   return (
     <div>
-      <h2 className="font-heading font-bold text-lg mb-4">Your Modules</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="mb-4 flex items-baseline justify-between"><h2 className="font-heading text-lg font-bold">Your modules</h2><span className="text-xs text-muted-foreground">{modules.length} available</span></div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {modules.map((mod, i) => {
           const Icon = mod.icon;
           return (
@@ -22,11 +24,11 @@ export default function ModuleGrid({ role }) {
             >
               <Link
                 to={mod.path}
-                className="group block bg-card rounded-xl border border p-5 hover:shadow-lg hover:border-primary/30 transition-all duration-200"
+                className="group block h-full surface surface-hover p-5"
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                    <Icon className="w-5 h-5 text-primary" />
+                  <div className="icon-tile h-10 w-10 transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                    <Icon className="w-5 h-5" />
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                 </div>

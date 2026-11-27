@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import FaceEnrollment from "@/pages/FaceEnrollment";
 
 const LoadingScreen = () => (
     <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -8,7 +9,7 @@ const LoadingScreen = () => (
                 <span className="text-white font-bold text-xl">R</span>
             </div>
 
-            <div className="w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <div className="w-10 h-10 border-4 border-gray-200 border-t-primary rounded-full animate-spin"></div>
 
             <p className="text-gray-500 text-sm">
                 Authenticating...
@@ -19,7 +20,7 @@ const LoadingScreen = () => (
 
 export default function ProtectedRoute() {
 
-    const { loading, isAuthenticated } = useAuth();
+    const { loading, isAuthenticated, user } = useAuth();
 
     const location = useLocation();
 
@@ -44,6 +45,13 @@ export default function ProtectedRoute() {
             />
 
         );
+
+    }
+
+    // Every account must have a face photo on file before using the modules.
+    if (user?.faceEnrollmentRequired) {
+
+        return <FaceEnrollment />;
 
     }
 

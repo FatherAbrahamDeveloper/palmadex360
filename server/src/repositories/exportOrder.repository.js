@@ -3,6 +3,7 @@ import prisma from "../config/prisma.js";
 const include = {
   product: { select: { id: true, name: true } },
   contact: { select: { id: true, displayName: true } },
+  customer: { select: { id: true, name: true } },
 };
 
 export const exportOrderRepository = {
@@ -27,5 +28,6 @@ export const exportOrderRepository = {
     }),
 
   findProductById: (companyId, id) => prisma.product.findFirst({ where: { id, companyId } }),
+  findCustomerById: (companyId, id) => prisma.customer.findFirst({ where: { id, companyId } }),
   findContactById: (companyId, id) => prisma.cRMContact.findFirst({ where: { id, companyId } }),
 };

@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ShoppingBag, Plus, AlertCircle } from "lucide-react";
+import { ShoppingBag, Plus, AlertCircle, ClipboardCheck, ClipboardList } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import QualityChecksPanel from "@/components/modules/quality/QualityChecksPanel";
+import TemplatesPanel from "@/components/modules/quality/TemplatesPanel";
+import NewCheckDialog from "@/components/modules/quality/NewCheckDialog";
+import { useAuth } from "@/context/AuthContext";
+import { canAccess } from "@/lib/roleConfig";
 import ModulePageShell from "@/components/modules/ModulePageShell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +21,19 @@ import { procurementApi, getErrorMessage } from "@/services/api";
 const PAGE_SIZE = 20;
 const ALL = "all";
 
+const TABS = ["requests", "quality", "templates"];
+
 export default function Procurement() {
+  const { user } = useAuth();
+  const canWrite = canAccess(user, "procurement", "EDIT");
+  const canManageTemplates = canAccess(user, "procurement", "FULL");
+  const [params, setParams] = useSearchParams();
+  const tab = TABS.includes(params.get("tab")) && (params.get("tab") !== "templates" || canManageTemplates) ? params.get("tab") : "requests";
+  const checkId = params.get("check");
+  const setTab = (t) => setParams(t === "requests" ? {} : { tab: t }, { replace: true });
+  const openCheck = (id) => setParams({ tab: "quality", check: id }, { replace: true });
+  const [newCheckFor, setNewCheckFor] = useState(null);
+
   const [requests, setRequests] = useState([]);
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [page, setPage] = useState(1);
@@ -61,14 +80,29 @@ export default function Procurement() {
   return (
     <ModulePageShell
       title="Procurement"
-      description="Manage purchase requests and procurement workflows"
+      description="Purchase requests, commodity quality checks (QA/QC) and checklists"
       icon={ShoppingBag}
       actions={
-        <Button size="sm" onClick={openNew}>
-          <Plus className="w-4 h-4 mr-1" /> New Request
-        </Button>
+        tab === "requests" && canWrite ? (
+          <Button size="sm" onClick={openNew}>
+            <Plus className="w-4 h-4 mr-1" /> New Request
+          </Button>
+        ) : null
       }
     >
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="requests"><ShoppingBag className="mr-1.5 h-4 w-4" /> Purchase requests</TabsTrigger>
+          <TabsTrigger value="quality"><ClipboardCheck className="mr-1.5 h-4 w-4" /> Quality checks</TabsTrigger>
+          {canManageTemplates && <TabsTrigger value="templates"><ClipboardList className="mr-1.5 h-4 w-4" /> Checklists</TabsTrigger>}
+        </TabsList>
+
+        <TabsContent value="quality">
+          <QualityChecksPanel initialCheckId={checkId} onCheckClosed={() => checkId && setParams({ tab: "quality" }, { replace: true })} />
+        </TabsContent>
+        {canManageTemplates && <TabsContent value="templates"><TemplatesPanel /></TabsContent>}
+
+        <TabsContent value="requests">
       <div className="mb-4">
         <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
@@ -86,13 +120,13 @@ export default function Procurement() {
           {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
         </div>
       ) : error ? (
-        <div className="bg-card rounded-xl border p-8 text-center space-y-3">
+        <div className="surface p-8 text-center space-y-3">
           <AlertCircle className="w-8 h-8 mx-auto text-destructive" />
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button variant="outline" size="sm" onClick={load}>Try again</Button>
         </div>
       ) : requests.length === 0 ? (
-        <div className="bg-card rounded-xl border p-10 text-center space-y-3">
+        <div className="surface p-10 text-center space-y-3">
           <ShoppingBag className="w-8 h-8 mx-auto text-muted-foreground" />
           <h3 className="font-semibold">
             {status === ALL ? "No purchase requests yet" : "No requests with this status"}
@@ -102,7 +136,7 @@ export default function Procurement() {
               ? "Create your first request to start the procurement workflow."
               : "Try a different status filter."}
           </p>
-          {status === ALL && (
+          {status === ALL && canWrite && (
             <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-1" /> New Request</Button>
           )}
         </div>
@@ -122,6 +156,9 @@ export default function Procurement() {
         </div>
       )}
 
+        </TabsContent>
+      </Tabs>
+
       <RequestFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
@@ -135,6 +172,14 @@ export default function Procurement() {
         onChanged={load}
         onEdit={openEdit}
         onDeleted={handleDeleted}
+        onOpenCheck={(id) => { setDetailOpen(false); openCheck(id); }}
+        onNewCheck={(id) => { setDetailOpen(false); setNewCheckFor(id); }}
+      />
+      <NewCheckDialog
+        open={!!newCheckFor}
+        onOpenChange={(v) => !v && setNewCheckFor(null)}
+        purchaseRequestId={newCheckFor}
+        onCreated={(c) => openCheck(c.id)}
       />
     </ModulePageShell>
   );

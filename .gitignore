@@ -1,11 +1,45 @@
+# Dependencies
+node_modules/
 
-# Local secrets and database backups
-client/.env.production
-server/renamyconnect_dev_backup.sql
-server/update-palmadex-admin.js
+# Build output
+client/dist/
+dist/
 
-# Palmadex360 local secrets and backups
-client/.env.production
-server/.env
-server/renamyconnect_dev_backup.sql
-server/update-palmadex-admin.js
+# Environment files (keep only *.example files in git)
+.env
+.env.*
+!.env.example
+!client/.env.production
+*.local
+env.local
+client/src/lib/.env
+
+# Database dumps, backups and exports (may contain real supplier or user data)
+*.sql
+*.sql.gz
+*.dump
+*.csv
+*.bak
+*.utf16.bak
+# ...but keep Prisma migrations
+!server/prisma/migrations/**/migration.sql
+
+# Scratch Prisma schema copies
+server/prisma/schema.*.prisma
+server/prisma/schema-diff.*
+
+# Uploaded files (user and supplier documents are data, not code)
+server/uploads/
+
+# One-off local scripts with credentials (replaced by the seed script)
+server/create-user.js
+
+# Logs and OS/editor files
+logs/
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/

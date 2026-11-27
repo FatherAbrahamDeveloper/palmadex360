@@ -1,28 +1,29 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import RoleGuard from "@/components/guards/RoleGuard";
+import ModuleGuard from "@/components/guards/ModuleGuard";
 import AppLayout from "@/components/layout/AppLayout";
-import { USER_ROLES } from "@/lib/RoleConfig";
 
-// Authentication Pages
+// Authentication
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
+import VerifyEmail from "@/pages/VerifyEmail";
+import NotFound from "@/pages/NotFound";
+import Account from "@/pages/Account";
 
-// General Modules
+// Modules
 import Dashboard from "@/pages/modules/Dashboard";
 import CRM from "@/pages/modules/CRM";
 import CRMContactDetails from "@/pages/modules/CRMContactDetails";
 import CRMContactEdit from "@/pages/modules/CRMContactEdit";
-
 import SupplierManagement from "@/pages/modules/SupplierManagement";
 import SupplierContactDetails from "@/pages/modules/SupplierContactDetails";
 import SupplierContactEdit from "@/pages/modules/SupplierContactEdit";
 import SupplierApplicationForm from "@/pages/modules/SupplierApplicationForm";
-
 import ProductManagement from "@/pages/modules/ProductManagement";
+import ProductDetail from "@/pages/modules/ProductDetail";
 import ExportOrders from "@/pages/modules/ExportOrders";
 import Shipping from "@/pages/modules/Shipping";
 import Documents from "@/pages/modules/Documents";
@@ -36,162 +37,67 @@ import Reports from "@/pages/modules/Reports";
 import AccessManagement from "@/pages/modules/AccessManagement";
 import Support from "@/pages/modules/Support";
 import KnowledgeBase from "@/pages/modules/KnowledgeBase";
-import MediaCenter from "@/pages/modules/MediaCenter";
 
 function LoadingScreen() {
   return (
     <div className="flex h-screen items-center justify-center">
-      <h2 className="text-xl font-semibold">
-        Loading Palmadex 360...
-      </h2>
+      <h2 className="text-xl font-semibold">Loading Palmadex 360...</h2>
     </div>
   );
 }
 
+// [path, module, page, level]
+const MODULE_ROUTES = [
+  ["/crm", "crm", <CRM />],
+  ["/crm/:id/edit", "crm", <CRMContactEdit />, "EDIT"],
+  ["/crm/:id", "crm", <CRMContactDetails />],
+  ["/suppliers", "suppliers", <SupplierManagement />],
+  ["/suppliers/new", "suppliers", <SupplierContactEdit />, "EDIT"],
+  ["/suppliers/:id/edit", "suppliers", <SupplierContactEdit />, "EDIT"],
+  ["/suppliers/:id", "suppliers", <SupplierContactDetails />],
+  ["/products", "products", <ProductManagement />],
+  ["/products/:id", "products", <ProductDetail />],
+  ["/orders", "orders", <ExportOrders />],
+  ["/shipping", "shipping", <Shipping />],
+  ["/documents", "documents", <Documents />],
+  ["/compliance", "compliance", <Compliance />],
+  ["/inventory", "inventory", <Inventory />],
+  ["/finance", "finance", <Finance />],
+  ["/portal", "portal", <CustomerPortal />],
+  ["/procurement", "procurement", <Procurement />],
+  ["/communication", "communication", <Communication />],
+  ["/reports", "reports", <Reports />],
+  ["/access", "access", <AccessManagement />],
+  ["/support", "support", <Support />],
+  ["/knowledge", "knowledge", <KnowledgeBase />],
+  ["/knowledge/:slug", "knowledge", <KnowledgeBase />],
+];
+
 function AppRoutes() {
   const { loading } = useAuth();
-
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  if (loading) return <LoadingScreen />;
 
   return (
     <Routes>
-      {/* Public Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-
+      <Route path="/verify-email" element={<VerifyEmail />} />
       {/* Public supplier application — no login required */}
-      <Route
-        path="/supplier-application"
-        element={<SupplierApplicationForm />}
-      />
+      <Route path="/supplier-application" element={<SupplierApplicationForm />} />
 
-      {/* Protected application */}
-      <Route
-        element={
-          <ProtectedRoute
-            unauthenticatedElement={<Navigate to="/login" replace />}
-          />
-        }
-      >
+      <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<Dashboard />} />
-
-          {/* CRM */}
-          <Route
-            path="/crm"
-            element={
-              <RoleGuard
-                allowedRoles={[
-                  USER_ROLES.SUPER_ADMIN,
-                  USER_ROLES.STAFF,
-                ]}
-              >
-                <CRM />
-              </RoleGuard>
-            }
-          />
-
-          <Route
-            path="/crm/:id/edit"
-            element={
-              <RoleGuard
-                allowedRoles={[
-                  USER_ROLES.SUPER_ADMIN,
-                  USER_ROLES.STAFF,
-                ]}
-              >
-                <CRMContactEdit />
-              </RoleGuard>
-            }
-          />
-
-          <Route
-            path="/crm/:id"
-            element={<CRMContactDetails />}
-          />
-
-          {/* Supplier Management */}
-          <Route
-            path="/suppliers"
-            element={<SupplierManagement />}
-          />
-
-          <Route
-            path="/suppliers/new"
-            element={
-              <RoleGuard
-                allowedRoles={[
-                  USER_ROLES.SUPER_ADMIN,
-                  USER_ROLES.ADMIN,
-                ]}
-              >
-                <SupplierContactEdit />
-              </RoleGuard>
-            }
-          />
-
-          <Route
-            path="/suppliers/:id/edit"
-            element={
-              <RoleGuard
-                allowedRoles={[
-                  USER_ROLES.SUPER_ADMIN,
-                  USER_ROLES.ADMIN,
-                ]}
-              >
-                <SupplierContactEdit />
-              </RoleGuard>
-            }
-          />
-
-          <Route
-            path="/suppliers/:id"
-            element={<SupplierContactDetails />}
-          />
-
-          {/* Other Modules */}
-          <Route path="/products" element={<ProductManagement />} />
-          <Route path="/orders" element={<ExportOrders />} />
-          <Route path="/shipping" element={<Shipping />} />
-          <Route path="/documents" element={<Documents />} />
-          <Route path="/compliance" element={<Compliance />} />
-          <Route path="/inventory" element={<Inventory />} />
-
-          <Route
-            path="/finance"
-            element={
-              <RoleGuard allowedRoles={[USER_ROLES.SUPER_ADMIN]}>
-                <Finance />
-              </RoleGuard>
-            }
-          />
-
-          <Route path="/portal" element={<CustomerPortal />} />
-          <Route path="/procurement" element={<Procurement />} />
-          <Route path="/communication" element={<Communication />} />
-          <Route path="/reports" element={<Reports />} />
-
-          <Route
-            path="/access"
-            element={
-              <RoleGuard allowedRoles={["SUPER_ADMIN"]}>
-                <AccessManagement />
-              </RoleGuard>
-            }
-          />
-
-          <Route path="/support" element={<Support />} />
-          <Route path="/knowledge" element={<KnowledgeBase />} />
-          <Route path="/media" element={<MediaCenter />} />
+          <Route path="/account" element={<Account />} />
+          {MODULE_ROUTES.map(([path, module, page, level]) => (
+            <Route key={path} path={path} element={<ModuleGuard module={module} level={level}>{page}</ModuleGuard>} />
+          ))}
         </Route>
       </Route>
 
-      {/* Unknown routes */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

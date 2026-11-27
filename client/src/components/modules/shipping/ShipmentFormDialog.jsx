@@ -132,7 +132,7 @@ export default function ShipmentFormDialog({ open, onOpenChange, shipment, onSav
       if (Array.isArray(fieldErrors)) {
         setErrors(Object.fromEntries(fieldErrors.map((x) => [x.field, x.message])));
       }
-      toast.error(getErrorMessage(err, "Could not save the shipment"));
+      toast.error(getErrorMessage(err, "Could not save the shipment"), { duration: 9000 });
     } finally {
       setSaving(false);
     }

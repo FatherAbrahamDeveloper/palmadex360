@@ -24,33 +24,27 @@ export const findContacts = async ({
         where.OR = [
             {
                 displayName: {
-                    contains: search
-                }
+                    contains: search, mode: "insensitive" }
             },
             {
                 firstName: {
-                    contains: search
-                }
+                    contains: search, mode: "insensitive" }
             },
             {
                 lastName: {
-                    contains: search
-                }
+                    contains: search, mode: "insensitive" }
             },
             {
                 companyName: {
-                    contains: search
-                }
+                    contains: search, mode: "insensitive" }
             },
             {
                 email: {
-                    contains: search
-                }
+                    contains: search, mode: "insensitive" }
             },
             {
                 phone: {
-                    contains: search
-                }
+                    contains: search, mode: "insensitive" }
             }
         ];
 

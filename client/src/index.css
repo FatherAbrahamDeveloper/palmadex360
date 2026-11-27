@@ -1,5 +1,4 @@
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,141 +6,92 @@
 
 @layer base {
   :root {
-    /* ==================================
-       PALMADEX BRAND COLORS
-       Primary Blue: #008FD5
-       RGB: 0, 143, 213
-       HSL: 200, 100%, 42%
-    ================================== */
-
-    /* Background */
-    --background: 200 30% 98%;
-    --foreground: 210 30% 10%;
-
-    /* Cards */
+    /* Neutral, slightly cool canvas with Palmadex blue as the brand colour */
+    --background: 204 33% 98%;
+    --foreground: 214 32% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 210 30% 10%;
-
-    /* Popovers */
+    --card-foreground: 222 25% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 210 30% 10%;
-
-    /* Primary - PALMADEX BLUE */
-    --primary: 200 100% 42%;
+    --popover-foreground: 222 25% 12%;
+    --primary: 200 100% 40%;
     --primary-foreground: 0 0% 100%;
-
-    /* Secondary */
-    --secondary: 200 40% 94%;
-    --secondary-foreground: 210 35% 18%;
-
-    /* Muted */
-    --muted: 200 20% 95%;
-    --muted-foreground: 210 12% 45%;
-
-    /* Accent */
-    --accent: 200 75% 93%;
-    --accent-foreground: 200 100% 32%;
-
-    /* Destructive */
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-
-    /* Borders and inputs */
-    --border: 200 20% 88%;
-    --input: 200 20% 88%;
+    --secondary: 204 30% 95%;
+    --secondary-foreground: 214 32% 18%;
+    --muted: 204 25% 96%;
+    --muted-foreground: 215 12% 45%;
+    --accent: 200 80% 94%;
+    --accent-foreground: 200 100% 28%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 206 22% 89%;
+    --input: 206 22% 86%;
     --ring: 200 100% 42%;
+    --radius: 0.75rem;
 
-    /* Border radius */
-    --radius: 0.625rem;
+    --chart-1: 200 100% 42%;
+    --chart-2: 168 70% 38%;
+    --chart-3: 262 60% 58%;
+    --chart-4: 32 92% 50%;
+    --chart-5: 340 70% 54%;
 
-    /* ==================================
-       TYPOGRAPHY
-    ================================== */
-
-    --font-heading: 'Playfair Display', Georgia, serif;
+    --font-heading: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
     --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
-    --font-display: 'Playfair Display', Georgia, serif;
+    --font-display: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --sidebar-background: 202 100% 22%;
+    --sidebar-foreground: 200 40% 92%;
+    --sidebar-primary: 195 100% 72%;
+    --sidebar-primary-foreground: 202 100% 16%;
+    --sidebar-accent: 202 90% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 202 70% 28%;
+    --sidebar-ring: 195 100% 72%;
 
-    /* ==================================
-       SIDEBAR
-    ================================== */
-
-    --sidebar-background: 200 100% 37%;
---sidebar-foreground: 0 0% 100%;
-
-/* Active menu item */
---sidebar-primary: 0 0% 100%;
---sidebar-primary-foreground: 200 100% 37%;
-
-/* Hover menu items */
---sidebar-accent: 200 100% 32%;
---sidebar-accent-foreground: 0 0% 100%;
-
-/* Borders and focus */
---sidebar-border: 200 100% 34%;
---sidebar-ring: 0 0% 100%;
+    --shadow-soft: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.04);
+    --shadow-lift: 0 10px 30px -12px rgb(15 23 42 / 0.18);
   }
-
-  /* ==================================
-     DARK THEME
-  ================================== */
 
   .dark {
-    --background: 215 28% 8%;
-    --foreground: 210 20% 95%;
+    --background: 222 28% 7%;
+    --foreground: 210 20% 96%;
+    --card: 222 24% 10%;
+    --card-foreground: 210 20% 96%;
+    --popover: 222 24% 11%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 199 95% 52%;
+    --primary-foreground: 205 60% 8%;
+    --secondary: 222 18% 16%;
+    --secondary-foreground: 210 20% 92%;
+    --muted: 222 18% 15%;
+    --muted-foreground: 217 12% 62%;
+    --accent: 202 40% 18%;
+    --accent-foreground: 198 95% 80%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 16% 18%;
+    --input: 222 16% 22%;
+    --ring: 199 95% 52%;
 
-    /* Cards */
-    --card: 215 25% 11%;
-    --card-foreground: 210 20% 95%;
+    --chart-1: 199 95% 55%;
+    --chart-2: 168 60% 50%;
+    --chart-3: 262 70% 70%;
+    --chart-4: 32 92% 58%;
+    --chart-5: 340 75% 64%;
 
-    /* Popovers */
-    --popover: 215 25% 11%;
-    --popover-foreground: 210 20% 95%;
-
-    /* Primary - Brighter PALMADEX Blue */
-    --primary: 200 100% 55%;
-    --primary-foreground: 0 0% 100%;
-
-    /* Secondary */
-    --secondary: 215 20% 17%;
-    --secondary-foreground: 210 20% 95%;
-
-    /* Muted */
-    --muted: 215 20% 16%;
-    --muted-foreground: 210 12% 65%;
-
-    /* Accent */
-    --accent: 200 45% 21%;
-    --accent-foreground: 200 100% 78%;
-
-    /* Destructive */
-    --destructive: 0 62% 38%;
-    --destructive-foreground: 0 0% 98%;
-
-    /* Borders and inputs */
-    --border: 215 18% 22%;
-    --input: 215 18% 22%;
-    --ring: 200 100% 55%;
-
-    /* Sidebar */
-    --sidebar-background: 215 30% 10%;
-    --sidebar-foreground: 210 20% 95%;
-
-    --sidebar-primary: 200 100% 55%;
+    --sidebar-background: 210 45% 8%;
+    --sidebar-foreground: 210 15% 86%;
+    --sidebar-primary: 199 95% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 208 35% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 208 30% 15%;
+    --sidebar-ring: 199 95% 58%;
 
-    --sidebar-accent: 200 35% 19%;
-    --sidebar-accent-foreground: 200 100% 85%;
-
-    --sidebar-border: 215 20% 20%;
-    --sidebar-ring: 200 100% 55%;
+    --shadow-soft: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-lift: 0 12px 32px -12px rgb(0 0 0 / 0.6);
+    color-scheme: dark;
   }
-
-  /* ==================================
-     GLOBAL STYLES
-  ================================== */
 
   * {
     border-color: hsl(var(--border));
@@ -151,21 +101,82 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: var(--font-body);
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1, h2, h3, h4 {
     font-family: var(--font-heading);
-  }
-
-  button {
-    font-family: var(--font-body);
+    letter-spacing: -0.015em;
   }
 
   ::selection {
-    background-color: hsl(var(--primary) / 0.2);
-    color: hsl(var(--foreground));
+    background: hsl(var(--primary) / 0.18);
   }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* The standard card surface used across every module */
+  .surface {
+    @apply rounded-2xl border bg-card text-card-foreground;
+    box-shadow: var(--shadow-soft);
+  }
+  .surface-hover {
+    @apply transition-all duration-200;
+  }
+  .surface-hover:hover {
+    box-shadow: var(--shadow-lift);
+    border-color: hsl(var(--primary) / 0.35);
+    transform: translateY(-1px);
+  }
+  .page-title {
+    @apply font-heading text-2xl md:text-[28px] font-bold tracking-tight;
+  }
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;
+  }
+  .icon-tile {
+    @apply flex items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/15;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--sidebar-border)) transparent;
+  }
+  .bg-app-gradient {
+    background-image:
+      radial-gradient(1200px 500px at 100% -10%, hsl(var(--primary) / 0.07), transparent 60%),
+      radial-gradient(800px 400px at -10% 0%, hsl(var(--chart-2) / 0.05), transparent 60%);
+  }
+}
+
+@media print {
+  aside, header, .print\:hidden { display: none !important; }
+  main { margin: 0 !important; padding: 0 !important; }
+  .surface { box-shadow: none; break-inside: avoid; }
+}
+
+/* Status pills and notices use light tints; give them readable dark-mode equivalents. */
+@layer utilities {
+  .dark .bg-amber-50, .dark .bg-amber-100 { background-color: rgb(245 158 11 / 0.14); }
+  .dark .bg-sky-50, .dark .bg-sky-100 { background-color: rgb(14 165 233 / 0.14); }
+  .dark .bg-emerald-50, .dark .bg-emerald-100 { background-color: rgb(16 185 129 / 0.14); }
+  .dark .bg-red-50, .dark .bg-red-100 { background-color: rgb(239 68 68 / 0.14); }
+  .dark .bg-violet-100, .dark .bg-indigo-100 { background-color: rgb(139 92 246 / 0.16); }
+  .dark .bg-slate-200 { background-color: rgb(148 163 184 / 0.16); }
+  .dark .text-amber-700, .dark .text-amber-800 { color: rgb(252 211 77); }
+  .dark .text-sky-700, .dark .text-sky-800 { color: rgb(125 211 252); }
+  .dark .text-emerald-700, .dark .text-emerald-800 { color: rgb(110 231 183); }
+  .dark .text-red-700, .dark .text-red-800 { color: rgb(252 165 165); }
+  .dark .text-violet-800, .dark .text-indigo-800 { color: rgb(196 181 253); }
+  .dark .text-slate-700 { color: rgb(203 213 225); }
+  .dark .border-amber-300 { border-color: rgb(245 158 11 / 0.35); }
 }

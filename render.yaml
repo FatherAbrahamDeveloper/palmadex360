@@ -1,0 +1,32 @@
+# Render Blueprint for the Palmadex 360 API (optional: you can also create the
+# web service by hand with the same settings, see docs/deployment-guide.md).
+services:
+  - type: web
+    name: palmadex360
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: APP_URL
+        value: https://palmadex360.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: FACE_ENROLLMENT_REQUIRED
+        value: "true"

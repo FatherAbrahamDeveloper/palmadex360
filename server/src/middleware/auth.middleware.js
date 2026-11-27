@@ -1,79 +1,61 @@
-import jwt from "jsonwebtoken";
 import prisma from "../config/prisma.js";
+import { verifyToken } from "../utils/jwt.js";
+import { permissionService } from "../services/permission.service.js";
+
+export const AUTH_USER_SELECT = {
+  id: true,
+  companyId: true,
+  customerId: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  phone: true,
+  organization: true,
+  role: true,
+  isActive: true,
+  approvalStatus: true,
+  emailVerifiedAt: true,
+  tokenVersion: true,
+  twoFactorEnabled: true,
+  faceStatus: true,
+  faceEnrolledAt: true,
+  lastLoginAt: true,
+  createdAt: true,
+  company: { select: { id: true, name: true } },
+  customer: { select: { id: true, name: true } },
+};
+
+// Loads the user behind a token and checks the account may still be used.
+export async function resolveUserFromToken(token) {
+  const decoded = verifyToken(token);
+  if (typeof decoded.id !== "string" || decoded.purpose) return null;
+
+  const user = await prisma.user.findUnique({ where: { id: decoded.id }, select: AUTH_USER_SELECT });
+  if (!user || !user.isActive || user.approvalStatus !== "APPROVED") return null;
+  if ((decoded.v ?? 0) !== user.tokenVersion) return null;
+
+  user.permissions = await permissionService.forRole(user.companyId, user.role);
+  if (user.role === "SUPER_ADMIN") {
+    for (const k of Object.keys(user.permissions)) user.permissions[k] = "FULL";
+  }
+  return user;
+}
 
 export const authenticate = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    const header = req.headers.authorization || "";
+    const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+    if (!token) return res.status(401).json({ message: "Authentication required" });
 
-    if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({
-        message: "Authentication required",
-      });
-    }
+    const user = await resolveUserFromToken(token);
+    if (!user) return res.status(401).json({ message: "Your session has ended. Please sign in again." });
 
-    const token = authHeader.slice(7).trim();
-
-    if (!token) {
-      return res.status(401).json({
-        message: "Authentication required",
-      });
-    }
-
-    const secret = process.env.JWT_SECRET;
-
-    if (!secret) {
-      console.error("JWT_SECRET is not configured");
-
-      return res.status(500).json({
-        message: "Authentication configuration error",
-      });
-    }
-
-    const decoded = jwt.verify(token, secret);
-
-    // Support the token payload used by your existing login system.
-    const userId = decoded.id;
-
-    if (typeof userId !== "string" || !userId) {
-      return res.status(401).json({
-        message: "Invalid authentication token",
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        companyId: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        role: true,
-        isActive: true,
-      },
-    });
-
-    if (!user || !user.isActive) {
-      return res.status(401).json({
-        message: "User account is invalid or inactive",
-      });
-    }
-
-    // Only expose the fields the application needs.
     req.user = user;
-
     next();
   } catch (err) {
-    if (
-      err.name === "JsonWebTokenError" ||
-      err.name === "TokenExpiredError" ||
-      err.name === "NotBeforeError"
-    ) {
-      return res.status(401).json({
-        message: "Invalid or expired token",
-      });
+    if (["JsonWebTokenError", "TokenExpiredError", "NotBeforeError"].includes(err.name)) {
+      return res.status(401).json({ message: "Invalid or expired token" });
     }
-
     next(err);
   }
 };

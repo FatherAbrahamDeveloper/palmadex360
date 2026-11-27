@@ -14,7 +14,7 @@ export default function StockCard({ item, onClick }) {
       tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick()}
-      className="bg-card rounded-xl border p-5 hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="surface p-5 hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex items-start justify-between mb-2">
         <h3 className="font-semibold text-sm">{item.product.name}</h3>

@@ -11,8 +11,9 @@ const reqNum = z.preprocess(
 );
 
 const baseSchema = z.object({
-  customerName: z.string().trim().min(2, "Customer name is required").max(191),
+  customerName: z.string().trim().min(2, "Customer name is required").max(191).optional(),
   contactId: optStr(40),
+  customerId: optStr(40),
   productId: optStr(40),
   productName: optStr(191),
   quantity: reqNum.refine((n) => n > 0, "Quantity must be greater than 0"),
@@ -23,16 +24,22 @@ const baseSchema = z.object({
   notes: optStr(5000),
 });
 
-export const createExportOrderSchema = baseSchema.refine((d) => d.productId || d.productName, {
-  message: "Select a product or enter a product name",
-  path: ["productName"],
-});
+export const createExportOrderSchema = baseSchema
+  .refine((d) => d.productId || d.productName, {
+    message: "Select a product or enter a product name",
+    path: ["productName"],
+  })
+  .refine((d) => d.customerId || d.customerName, {
+    message: "Select a customer or enter a customer name",
+    path: ["customerName"],
+  });
 
 export const updateExportOrderSchema = baseSchema.partial();
 
 export const listExportOrdersQuerySchema = z.object({
   search: z.string().trim().optional(),
   status: z.enum(ORDER_STATUSES).optional(),
+  customerId: z.string().trim().max(40).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   sortBy: z.enum(["createdAt", "totalValue", "customerName"]).default("createdAt"),

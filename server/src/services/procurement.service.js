@@ -1,5 +1,6 @@
 import { procurementRepository as repo } from "../repositories/procurement.repository.js";
 import { HttpError } from "./product.service.js";
+import { blockingFailures, blockedMessage } from "./qa.service.js";
 
 const TRANSITIONS = {
   PENDING: ["APPROVED", "REJECTED", "CANCELLED"],
@@ -58,9 +59,9 @@ function buildWhere(companyId, { search, status }) {
   if (status) where.status = status;
   if (search) {
     where.OR = [
-      { requestNumber: { contains: search } },
-      { itemName: { contains: search } },
-      { supplierName: { contains: search } },
+      { requestNumber: { contains: search, mode: "insensitive" } },
+      { itemName: { contains: search, mode: "insensitive" } },
+      { supplierName: { contains: search, mode: "insensitive" } },
     ];
   }
   return where;
@@ -142,6 +143,10 @@ export const procurementService = {
     }
     if (["APPROVED", "REJECTED"].includes(status) && !APPROVER_ROLES.includes(role)) {
       throw new HttpError(403, "Only managers can approve or reject purchase requests");
+    }
+    if (status === "COMPLETED") {
+      const failures = await blockingFailures(companyId, { purchaseRequestId: id });
+      if (failures.length) throw new HttpError(409, blockedMessage(failures, "Completing this purchase request"));
     }
 
     const updated = await repo.changeStatus({

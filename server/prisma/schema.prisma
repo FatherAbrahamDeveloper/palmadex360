@@ -4,6 +4,8 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
+  // Neon: DATABASE_URL is the pooled connection (host contains "-pooler"),
+  // DIRECT_URL the direct one, used by migrations. Locally both can be the same.
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
@@ -16,6 +18,87 @@ enum UserRole {
   LOGISTICS
   DOCUMENTATION
   CUSTOMER_SUPPORT
+  FINANCE
+  PROCUREMENT
+  WAREHOUSE
+  VIEWER
+  CUSTOMER
+}
+
+enum UserApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FaceStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum UserTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  INVITE
+}
+
+enum AccessLevel {
+  NONE
+  VIEW
+  EDIT
+  FULL
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_USER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketCategory {
+  GENERAL
+  ORDER
+  SHIPMENT
+  DOCUMENT
+  BILLING
+  TECHNICAL
+  ACCOUNT
+  COMPLAINT
+}
+
+enum TicketMessageKind {
+  REPLY
+  NOTE
+  SYSTEM
+}
+
+enum KnowledgeArticleType {
+  ARTICLE
+  FAQ
+  GUIDE
+  TUTORIAL
+}
+
+enum KnowledgeArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum KnowledgeAudience {
+  INTERNAL
+  ALL
 }
 
 enum ConversationType {
@@ -132,6 +215,16 @@ enum StockMovementType {
   ADJUSTMENT
 }
 
+// Outcome of a commodity quality (QA/QC) checklist. FAILED blocks completing the
+// purchase request and moving a linked shipment to loading; OVERRIDDEN means an
+// administrator reviewed a failure and released it.
+enum QaInspectionStatus {
+  DRAFT
+  PASSED
+  FAILED
+  OVERRIDDEN
+}
+
 enum PurchaseRequestStatus {
   PENDING
   APPROVED
@@ -156,6 +249,15 @@ enum PaymentMethod {
   OTHER
 }
 
+enum ComplianceType {
+  CERTIFICATE
+  REGULATION
+  PERMIT
+  STANDARD
+  COMPLIANCE_BODY
+  OTHER
+}
+
 enum ExpenseCategory {
   PROCUREMENT
   LOGISTICS
@@ -175,6 +277,23 @@ enum ComplianceStatus {
   EXPIRED
 }
 
+enum DocumentVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ComplianceEventType {
+  CREATED
+  DETAILS_UPDATED
+  STATUS_CHANGED
+  OFFICER_CHANGED
+  DOCUMENT_UPLOADED
+  DOCUMENT_VERIFIED
+  DOCUMENT_REJECTED
+  DOCUMENT_DELETED
+}
+
 enum ComplianceRiskLevel {
   LOW
   MEDIUM
@@ -186,6 +305,11 @@ enum ComplianceDocumentStatus {
   PENDING
   VERIFIED
   REJECTED
+}
+
+enum ComplianceDocumentKind {
+  REFERENCE
+  SUPPORTING
 }
 
 model CRMContact {
@@ -218,6 +342,7 @@ model CRMContact {
   statusHistory CRMStatusHistory[]
   conversations Conversation[]
   exportOrders  ExportOrder[]
+  customers     Customer[]
 
   @@index([companyId])
   @@index([companyId, status])
@@ -282,26 +407,35 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users                 User[]
-  products              Product[]
-  conversations         Conversation[]
-  files                 File[]
-  notifications         Notification[]
-  auditLogs             AuditLog[]
-  crmContacts           CRMContact[]
-  crmNotes              CRMNote[]
-  crmStatusHistory      CRMStatusHistory[]
-  crmImportBatches      CRMImportBatch[]
-  suppliers             Supplier[]
-  exportOrders          ExportOrder[]
-  shipments             Shipment[]
-  warehouses            Warehouse[]
-  stockLevels           StockLevel[]
-  stockMovements        StockMovement[]
-  purchaseRequests      PurchaseRequest[]
-  invoices              Invoice[]
-  expenses              Expense[]
-  ComplianceRequirement ComplianceRequirement[]
+  users            User[]
+  products         Product[]
+  conversations    Conversation[]
+  files            File[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  crmContacts      CRMContact[]
+  crmNotes         CRMNote[]
+  crmStatusHistory CRMStatusHistory[]
+  crmImportBatches CRMImportBatch[]
+  suppliers        Supplier[]
+  exportOrders     ExportOrder[]
+  shipments        Shipment[]
+  warehouses       Warehouse[]
+  stockLevels      StockLevel[]
+  stockMovements   StockMovement[]
+  purchaseRequests PurchaseRequest[]
+  invoices         Invoice[]
+  expenses         Expense[]
+
+  complianceRequirements ComplianceRequirement[]
+
+  customers           Customer[]
+  rolePermissions     RolePermission[]
+  supportTickets      SupportTicket[]
+  knowledgeCategories KnowledgeCategory[]
+  knowledgeArticles   KnowledgeArticle[]
+  qaTemplates         QaTemplate[]
+  qaInspections       QaInspection[]
 }
 
 model User {
@@ -316,35 +450,80 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  company                        Company                       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  uploadedFiles                  File[]                        @relation("FileUploader")
-  sentMessages                   Message[]                     @relation("MessageSender")
-  conversationMembers            ConversationMember[]
-  notifications                  Notification[]
-  auditLogs                      AuditLog[]                    @relation("AuditActor")
-  assignedCRMContacts            CRMContact[]                  @relation("CRMContactAssignee")
-  crmNotes                       CRMNote[]                     @relation("CRMNoteAuthor")
-  crmStatusChanges               CRMStatusHistory[]            @relation("CRMStatusChanger")
-  crmImportBatches               CRMImportBatch[]              @relation("CRMImportUser")
-  verifiedSuppliers              Supplier[]                    @relation("SupplierVerifier")
-  reviewedSupplierApplications   SupplierApplication[]         @relation("SupplierApplicationReviewer")
-  supplierVerificationChanges    SupplierVerificationHistory[] @relation("SupplierVerificationActor")
-  createdExportOrders            ExportOrder[]                 @relation("ExportOrderCreator")
-  createdShipments               Shipment[]                    @relation("ShipmentCreator")
-  shipmentStatusChanges          ShipmentEvent[]               @relation("ShipmentEventActor")
-  stockMovements                 StockMovement[]               @relation("StockMovementActor")
-  createdPurchaseRequests        PurchaseRequest[]             @relation("PurchaseRequestCreator")
-  purchaseRequestChanges         PurchaseRequestEvent[]        @relation("PurchaseRequestEventActor")
-  createdInvoices                Invoice[]                     @relation("InvoiceCreator")
-  recordedPayments               InvoicePayment[]              @relation("PaymentRecorder")
-  createdExpenses                Expense[]                     @relation("ExpenseCreator")
-  complianceRequirements         ComplianceRequirement[]
-  assignedComplianceRequirements ComplianceRequirement[]       @relation("ComplianceAssignee")
-  createdComplianceRequirements  ComplianceRequirement[]       @relation("ComplianceCreator")
-  verifiedComplianceDocuments    ComplianceDocument[]          @relation("ComplianceDocumentVerifier")
-  complianceHistory              ComplianceHistory[]           @relation("ComplianceHistoryActor")
+  phone            String?            @db.VarChar(40)
+  organization     String?            @db.VarChar(191)
+  emailVerifiedAt  DateTime?
+  approvalStatus   UserApprovalStatus @default(APPROVED)
+  requestedRole    UserRole?
+  customerId       String?
+  lastLoginAt      DateTime?
+  failedLoginCount Int                @default(0)
+  lockedUntil      DateTime?
+  tokenVersion     Int                @default(0)
+  twoFactorEnabled Boolean            @default(false)
+  twoFactorSecret  String?            @db.VarChar(255)
+  faceStatus       FaceStatus         @default(NONE)
+  faceImagePath    String?            @db.VarChar(255)
+  faceEnrolledAt   DateTime?
+  faceReviewedAt   DateTime?
+  faceReviewedById String?
+
+  company        Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer       Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  faceReviewedBy User?      @relation("FaceReviewer", fields: [faceReviewedById], references: [id], onDelete: SetNull)
+  faceImage      FaceImage?
+  faceReviews    User[]     @relation("FaceReviewer")
+
+  tokens            UserToken[]
+  createdTickets    SupportTicket[]    @relation("TicketCreator")
+  assignedTickets   SupportTicket[]    @relation("TicketAssignee")
+  ticketMessages    TicketMessage[]
+  knowledgeArticles KnowledgeArticle[]
+
+  uploadedFiles       File[]               @relation("FileUploader")
+  sentMessages        Message[]            @relation("MessageSender")
+  conversationMembers ConversationMember[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]           @relation("AuditActor")
+
+  assignedCRMContacts CRMContact[]       @relation("CRMContactAssignee")
+  crmNotes            CRMNote[]          @relation("CRMNoteAuthor")
+  crmStatusChanges    CRMStatusHistory[] @relation("CRMStatusChanger")
+  crmImportBatches    CRMImportBatch[]   @relation("CRMImportUser")
+
+  verifiedSuppliers            Supplier[]                    @relation("SupplierVerifier")
+  reviewedSupplierApplications SupplierApplication[]         @relation("SupplierApplicationReviewer")
+  supplierVerificationChanges  SupplierVerificationHistory[] @relation("SupplierVerificationActor")
+
+  createdExportOrders   ExportOrder[]   @relation("ExportOrderCreator")
+  createdShipments      Shipment[]      @relation("ShipmentCreator")
+  shipmentStatusChanges ShipmentEvent[] @relation("ShipmentEventActor")
+  stockMovements        StockMovement[] @relation("StockMovementActor")
+
+  createdPurchaseRequests PurchaseRequest[]      @relation("PurchaseRequestCreator")
+  purchaseRequestChanges  PurchaseRequestEvent[] @relation("PurchaseRequestEventActor")
+
+  createdInvoices  Invoice[]        @relation("InvoiceCreator")
+  recordedPayments InvoicePayment[] @relation("PaymentRecorder")
+  createdExpenses  Expense[]        @relation("ExpenseCreator")
+
+  assignedComplianceRequirements ComplianceRequirement[] @relation("ComplianceAssignee")
+  createdComplianceRequirements  ComplianceRequirement[] @relation("ComplianceCreator")
+
+  uploadedComplianceDocs      ComplianceDocument[] @relation("ComplianceDocUploader")
+  verifiedComplianceDocuments ComplianceDocument[] @relation("ComplianceDocumentVerifier")
+
+  complianceHistory ComplianceHistory[] @relation("ComplianceHistoryActor")
+  complianceEvents  ComplianceEvent[]   @relation("ComplianceEventActor")
+
+  qaInspectionsCreated    QaInspection[] @relation("QaInspectionCreator")
+  qaInspectionsOverridden QaInspection[] @relation("QaInspectionOverrider")
+  qaTemplatesCreated      QaTemplate[]   @relation("QaTemplateCreator")
 
   @@index([companyId])
+  @@index([customerId])
+  @@index([faceReviewedById])
+  @@index([companyId, approvalStatus])
 }
 
 model ProductCategory {
@@ -392,6 +571,8 @@ model Product {
   exportOrders ExportOrder[]
   stockLevels  StockLevel[]
 
+  qaTemplates QaTemplate[]
+
   @@unique([companyId, sku])
   @@index([companyId])
   @@index([categoryId])
@@ -400,27 +581,35 @@ model Product {
 }
 
 model File {
-  id           String   @id @default(cuid())
-  companyId    String?
-  uploadedById String?
-  productId    String?
-  originalName String
-  storedName   String
-  path         String
-  mimeType     String
-  size         Int
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(cuid())
+  companyId     String?
+  uploadedById  String?
+  productId     String?
+  customerId    String?
+  exportOrderId String?
+  originalName  String
+  storedName    String
+  path          String
+  mimeType      String
+  size          Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  company             Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  uploadedBy          User?                @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
-  product             Product?             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  company     Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedBy  User?        @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  product     Product?     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customer    Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  exportOrder ExportOrder? @relation(fields: [exportOrderId], references: [id], onDelete: SetNull)
+
   messageAttachments  MessageAttachment[]
   complianceDocuments ComplianceDocument[]
+  blob                FileBlob?
 
   @@index([companyId])
   @@index([uploadedById])
   @@index([productId])
+  @@index([customerId])
+  @@index([exportOrderId])
 }
 
 model Conversation {
@@ -511,6 +700,8 @@ model Notification {
   message   String   @db.Text
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+  type      String?  @db.VarChar(40)
+  link      String?  @db.VarChar(255)
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -518,6 +709,7 @@ model Notification {
   @@index([userId])
   @@index([companyId])
   @@index([isRead])
+  @@index([userId, isRead, createdAt])
 }
 
 model CRMImportBatch {
@@ -631,6 +823,8 @@ model Supplier {
   verificationHistory SupplierVerificationHistory[]
   purchaseRequests    PurchaseRequest[]
 
+  qaInspections QaInspection[]
+
   @@index([companyId])
   @@index([companyId, status])
   @@index([companyId, country, city])
@@ -738,6 +932,7 @@ model ExportOrder {
 
   customerName String
   contactId    String? // optional link to an existing CRM contact
+  customerId   String? // the portal customer who owns this order
 
   productId   String? // optional link to the catalog
   productName String // snapshot, so old orders survive product edits/deletes
@@ -756,10 +951,13 @@ model ExportOrder {
 
   company   Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   contact   CRMContact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  customer  Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
   product   Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
   createdBy User?           @relation("ExportOrderCreator", fields: [createdById], references: [id], onDelete: SetNull)
   shipments ShipmentOrder[]
   invoices  Invoice[]
+  files     File[]
+  tickets   SupportTicket[]
 
   @@unique([companyId, orderNumber])
   @@index([companyId])
@@ -767,6 +965,7 @@ model ExportOrder {
   @@index([companyId, createdAt])
   @@index([contactId])
   @@index([productId])
+  @@index([customerId])
 }
 
 model Shipment {
@@ -800,6 +999,8 @@ model Shipment {
 
   orders ShipmentOrder[]
   events ShipmentEvent[]
+
+  qaInspections QaInspection[]
 
   @@unique([companyId, shipmentNumber])
   @@index([companyId])
@@ -941,6 +1142,8 @@ model PurchaseRequest {
 
   events PurchaseRequestEvent[]
 
+  qaInspections QaInspection[]
+
   @@unique([companyId, requestNumber])
   @@index([companyId])
   @@index([companyId, status])
@@ -1047,61 +1250,137 @@ model Expense {
   @@index([companyId, category])
 }
 
+model ComplianceRequiredDocument {
+  id            String   @id @default(cuid())
+  requirementId String
+  name          String   @db.VarChar(191)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  requirement ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  documents   ComplianceDocument[]
+
+  @@unique([requirementId, name])
+  @@index([requirementId])
+}
+
 model ComplianceRequirement {
-  id           String              @id @default(cuid())
-  companyId    String
-  title        String
-  region       String
-  authority    String?
-  description  String?             @db.Text
-  status       ComplianceStatus    @default(NOT_STARTED)
-  riskLevel    ComplianceRiskLevel @default(MEDIUM)
-  completion   Int                 @default(0)
-  assignedToId String?
-  createdById  String?
-  dueDate      DateTime?
-  expiryDate   DateTime?
-  notes        String?             @db.Text
+  id        String         @id @default(cuid())
+  companyId String
+  title     String
+  type      ComplianceType @default(CERTIFICATE)
+
+  region      String
+  authority   String?
+  description String? @db.Text
+
+  status     ComplianceStatus    @default(NOT_STARTED)
+  riskLevel  ComplianceRiskLevel @default(MEDIUM)
+  completion Int                 @default(0)
+
+  assignedToId       String?
+  assignedDepartment String?
+  createdById        String?
+
+  dueDate    DateTime?
+  expiryDate DateTime?
+
+  notes              String? @db.Text
+  outstandingActions String? @db.Text
+  destinationMarkets String? @db.Text
+  referenceNumber    String? @db.VarChar(100)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  assignedTo User?   @relation("ComplianceAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  createdBy  User?   @relation("ComplianceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  documents ComplianceDocument[]
-  history   ComplianceHistory[]
-  User      User?                @relation(fields: [userId], references: [id])
-  userId    String?
+  assignedTo User? @relation("ComplianceAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy  User? @relation("ComplianceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  documents         ComplianceDocument[]
+  history           ComplianceHistory[]
+  requiredDocuments ComplianceRequiredDocument[]
+  events            ComplianceEvent[]
 
   @@index([companyId])
   @@index([companyId, status])
+  @@index([companyId, region])
+  @@index([companyId, authority])
+  @@index([companyId, expiryDate])
   @@index([assignedToId])
   @@index([dueDate])
   @@index([expiryDate])
 }
 
 model ComplianceDocument {
-  id            String                   @id @default(cuid())
-  requirementId String
-  fileId        String
-  status        ComplianceDocumentStatus @default(PENDING)
-  expiryDate    DateTime?
-  verifiedById  String?
-  verifiedAt    DateTime?
-  notes         String?                  @db.Text
+  id                 String  @id @default(cuid())
+  requirementId      String
+  requiredDocumentId String?
+  fileId             String?
+
+  title String?
+  kind  ComplianceDocumentKind @default(SUPPORTING)
+
+  originalName String?
+  storedName   String?
+  path         String?
+  mimeType     String?
+  size         Int?
+
+  documentNumber String?   @db.VarChar(100)
+  issuedAt       DateTime?
+  expiresAt      DateTime?
+
+  status             ComplianceDocumentStatus   @default(PENDING)
+  verificationStatus DocumentVerificationStatus @default(PENDING)
+
+  verifiedById     String?
+  verifiedAt       DateTime?
+  verificationNote String?   @db.Text
+  notes            String?   @db.Text
+
+  uploadedById String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   requirement ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
-  file        File                  @relation(fields: [fileId], references: [id], onDelete: Cascade)
-  verifiedBy  User?                 @relation("ComplianceDocumentVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
 
-  @@unique([requirementId, fileId])
+  requiredDocument ComplianceRequiredDocument? @relation(fields: [requiredDocumentId], references: [id], onDelete: SetNull)
+
+  file File? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  uploadedBy User? @relation("ComplianceDocUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  verifiedBy User? @relation("ComplianceDocumentVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+
   @@index([requirementId])
+  @@index([requirementId, kind])
+  @@index([requiredDocumentId])
   @@index([fileId])
+  @@index([expiresAt])
+  @@index([uploadedById])
+  @@index([verifiedById])
+}
+
+model ComplianceEvent {
+  id            String  @id @default(cuid())
+  requirementId String
+  actorId       String?
+
+  type    ComplianceEventType
+  summary String              @db.VarChar(500)
+  note    String?             @db.Text
+
+  createdAt DateTime @default(now())
+
+  requirement ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  actor User? @relation("ComplianceEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([requirementId, createdAt])
+  @@index([actorId])
 }
 
 model ComplianceHistory {
@@ -1116,9 +1395,268 @@ model ComplianceHistory {
   createdAt DateTime @default(now())
 
   requirement ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
-  user        User?                 @relation("ComplianceHistoryActor", fields: [userId], references: [id], onDelete: SetNull)
+
+  user User? @relation("ComplianceHistoryActor", fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([requirementId])
   @@index([userId])
   @@index([createdAt])
+}
+
+model Customer {
+  id        String  @id @default(cuid())
+  companyId String
+  contactId String? // optional link to the CRM contact this customer came from
+
+  name    String
+  email   String? @db.VarChar(191)
+  phone   String? @db.VarChar(40)
+  country String? @db.VarChar(100)
+  address String? @db.Text
+  notes   String? @db.Text
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact CRMContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  users   User[]
+  orders  ExportOrder[]
+  files   File[]
+  tickets SupportTicket[]
+
+  @@index([companyId])
+  @@index([companyId, name])
+  @@index([contactId])
+}
+
+model UserToken {
+  id        String        @id @default(cuid())
+  userId    String
+  type      UserTokenType
+  tokenHash String        @unique @db.VarChar(64)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model RolePermission {
+  id        String      @id @default(cuid())
+  companyId String
+  role      UserRole
+  module    String      @db.VarChar(40)
+  access    AccessLevel
+  updatedAt DateTime    @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, role, module])
+}
+
+model SupportTicket {
+  id           String @id @default(cuid())
+  companyId    String
+  ticketNumber String @db.VarChar(30) // e.g. TKT-2026-0001, generated server-side
+
+  subject     String
+  description String         @db.Text
+  category    TicketCategory @default(GENERAL)
+  priority    TicketPriority @default(MEDIUM)
+  status      TicketStatus   @default(OPEN)
+  resolution  String?        @db.Text
+
+  createdById   String?
+  assignedToId  String?
+  customerId    String?
+  exportOrderId String?
+
+  firstResponseAt DateTime?
+  resolvedAt      DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy   User?        @relation("TicketCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  assignedTo  User?        @relation("TicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  customer    Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  exportOrder ExportOrder? @relation(fields: [exportOrderId], references: [id], onDelete: SetNull)
+
+  messages TicketMessage[]
+
+  @@unique([companyId, ticketNumber])
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([customerId])
+  @@index([exportOrderId])
+}
+
+model TicketMessage {
+  id       String            @id @default(cuid())
+  ticketId String
+  authorId String?
+  kind     TicketMessageKind @default(REPLY)
+  body     String            @db.Text
+
+  createdAt DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt])
+  @@index([authorId])
+}
+
+model KnowledgeCategory {
+  id          String  @id @default(cuid())
+  companyId   String
+  name        String  @db.VarChar(100)
+  slug        String  @db.VarChar(120)
+  description String? @db.Text
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company  Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  articles KnowledgeArticle[]
+
+  @@unique([companyId, slug])
+}
+
+model KnowledgeArticle {
+  id         String  @id @default(cuid())
+  companyId  String
+  categoryId String?
+  authorId   String?
+
+  title    String                 @db.VarChar(191)
+  slug     String                 @db.VarChar(200)
+  type     KnowledgeArticleType   @default(ARTICLE)
+  status   KnowledgeArticleStatus @default(DRAFT)
+  audience KnowledgeAudience      @default(ALL)
+  summary  String?                @db.Text
+  body     String                 @db.Text
+  tags     String?                @db.VarChar(500)
+
+  viewCount  Int @default(0)
+  helpfulYes Int @default(0)
+  helpfulNo  Int @default(0)
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  company  Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category KnowledgeCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  author   User?              @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, slug])
+  @@index([companyId, status])
+  @@index([categoryId])
+  @@index([authorId])
+}
+
+// File contents live in the database so they survive restarts on hosts with
+// temporary disks (Render free tier). Kept in their own tables so ordinary
+// queries on File and User never load the bytes.
+model FileBlob {
+  fileId    String   @id
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+}
+
+model FaceImage {
+  userId    String   @id
+  data      Bytes
+  mimeType  String   @db.VarChar(50)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Commodity quality checklists (QA/QC) in Procurement
+// ---------------------------------------------------------------------------
+
+// A checklist form for one commodity (e.g. "Hibiscus flower loading QA/QC").
+// `parameters` is an ordered list of checklist rows; see qa.service.js for the shape.
+model QaTemplate {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String   @db.VarChar(150)
+  commodity   String   @db.VarChar(100)
+  productId   String?
+  description String?  @db.Text
+  parameters  Json
+  isActive    Boolean  @default(true)
+  version     Int      @default(1)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  product     Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
+  createdBy   User?          @relation("QaTemplateCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  inspections QaInspection[]
+
+  @@unique([companyId, name])
+  @@index([companyId, isActive])
+}
+
+// One filled checklist, usually per container. The template's rows are copied in
+// (`parameters`) so later template edits never change a submitted record.
+model QaInspection {
+  id                String             @id @default(cuid())
+  companyId         String
+  inspectionNumber  String             @db.VarChar(30) // QC-2026-0001
+  templateId        String?
+  templateName      String             @db.VarChar(150)
+  templateVersion   Int                @default(1)
+  commodity         String             @db.VarChar(100)
+  purchaseRequestId String?
+  shipmentId        String?
+  supplierId        String?
+  cropYear          String?            @db.VarChar(20)
+  inspectionDate    DateTime
+  containerNumber   String?            @db.VarChar(40)
+  parameters        Json
+  answers           Json
+  results           Json?
+  generalComment    String?            @db.Text
+  inspectorName     String?            @db.VarChar(150)
+  signedAt          DateTime?
+  status            QaInspectionStatus @default(DRAFT)
+  failureSummary    String?            @db.Text
+  submittedAt       DateTime?
+  overriddenById    String?
+  overriddenAt      DateTime?
+  overrideReason    String?            @db.Text
+  createdById       String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  template        QaTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  purchaseRequest PurchaseRequest? @relation(fields: [purchaseRequestId], references: [id], onDelete: SetNull)
+  shipment        Shipment?        @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  supplier        Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  createdBy       User?            @relation("QaInspectionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  overriddenBy    User?            @relation("QaInspectionOverrider", fields: [overriddenById], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, inspectionNumber])
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+  @@index([purchaseRequestId])
+  @@index([shipmentId])
 }

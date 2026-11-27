@@ -115,19 +115,19 @@ function buildWhere(companyId, query) {
   if (query.riskLevel) where.riskLevel = query.riskLevel;
 
   if (query.region) {
-    where.region = { contains: query.region };
+    where.region = { contains: query.region, mode: "insensitive" };
   }
 
   if (query.authority) {
-    where.authority = { contains: query.authority };
+    where.authority = { contains: query.authority, mode: "insensitive" };
   }
 
   if (query.search) {
     where.OR = [
-      { title: { contains: query.search } },
-      { region: { contains: query.search } },
-      { authority: { contains: query.search } },
-      { description: { contains: query.search } },
+      { title: { contains: query.search, mode: "insensitive" } },
+      { region: { contains: query.search, mode: "insensitive" } },
+      { authority: { contains: query.search, mode: "insensitive" } },
+      { description: { contains: query.search, mode: "insensitive" } },
     ];
   }
 

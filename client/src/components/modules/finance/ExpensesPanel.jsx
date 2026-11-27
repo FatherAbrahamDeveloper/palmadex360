@@ -71,13 +71,13 @@ export default function ExpensesPanel({ onChanged }) {
           {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
         </div>
       ) : error ? (
-        <div className="bg-card rounded-xl border p-8 text-center space-y-3">
+        <div className="surface p-8 text-center space-y-3">
           <AlertCircle className="w-8 h-8 mx-auto text-destructive" />
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button variant="outline" size="sm" onClick={load}>Try again</Button>
         </div>
       ) : expenses.length === 0 ? (
-        <div className="bg-card rounded-xl border p-10 text-center space-y-3">
+        <div className="surface p-10 text-center space-y-3">
           <Wallet className="w-8 h-8 mx-auto text-muted-foreground" />
           <h3 className="font-semibold">{category === ALL ? "No expenses yet" : "No expenses in this category"}</h3>
           <p className="text-sm text-muted-foreground">
@@ -89,7 +89,7 @@ export default function ExpensesPanel({ onChanged }) {
         </div>
       ) : (
         <>
-          <div className="bg-card rounded-xl border overflow-hidden">
+          <div className="surface overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">

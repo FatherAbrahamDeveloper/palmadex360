@@ -47,7 +47,7 @@ function StatusBadge({ status }) {
 
 function StatCard({ title, value, description, icon: Icon, color }) {
   return (
-    <div className="rounded-xl border bg-card p-4 sm:p-5">
+    <div className="surface p-4 sm:p-5">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-muted-foreground">{title}</p>
@@ -69,7 +69,7 @@ function StatCard({ title, value, description, icon: Icon, color }) {
 
 function SupplierSkeleton() {
   return (
-    <div className="animate-pulse rounded-xl border bg-card p-5">
+    <div className="animate-pulse surface p-5">
       <div className="mb-5 flex justify-between">
         <div className="space-y-2">
           <div className="h-4 w-36 rounded bg-muted" />
@@ -242,7 +242,7 @@ export default function SupplierManagement() {
         </div>
 
         {/* Search and filters */}
-        <div className="rounded-xl border bg-card p-4">
+        <div className="surface p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -345,7 +345,7 @@ export default function SupplierManagement() {
             {items.map((supplier) => (
               <div
                 key={supplier.id}
-                className="group rounded-xl border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                className="group surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
               >
                 {/* Card header */}
                 <div className="flex items-start justify-between gap-3">
@@ -439,7 +439,7 @@ export default function SupplierManagement() {
 
         {/* Pagination */}
         {!loading && pagination.total > 0 && (
-          <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 surface p-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               Showing page{" "}
               <span className="font-semibold text-foreground">

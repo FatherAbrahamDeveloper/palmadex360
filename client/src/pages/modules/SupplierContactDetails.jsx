@@ -66,7 +66,7 @@ function formatValue(value) {
 
 function DetailSection({ title, fields, supplier }) {
   return (
-    <section className="rounded-xl border bg-card p-5">
+    <section className="surface p-5">
       <h2 className="mb-4 font-semibold">{title}</h2>
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {fields.map((field) => (
@@ -156,7 +156,7 @@ export default function SupplierContactDetails({
           Back to suppliers
         </Button>
 
-        <section className="rounded-xl border bg-card p-5">
+        <section className="surface p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold">
@@ -251,7 +251,7 @@ export default function SupplierContactDetails({
           ]}
         />
 
-        <section className="rounded-xl border bg-card p-5">
+        <section className="surface p-5">
           <h2 className="mb-4 flex items-center gap-2 font-semibold">
             <Package className="h-4 w-4" /> Products ({products.length})
           </h2>
@@ -277,7 +277,7 @@ export default function SupplierContactDetails({
           )}
         </section>
 
-        <section className="rounded-xl border bg-card p-5">
+        <section className="surface p-5">
           <h2 className="mb-4 flex items-center gap-2 font-semibold">
             <FileText className="h-4 w-4" /> Documents ({documents.length})
           </h2>
@@ -303,7 +303,7 @@ export default function SupplierContactDetails({
           )}
         </section>
 
-        <section className="rounded-xl border bg-card p-5">
+        <section className="surface p-5">
           <h2 className="mb-4 flex items-center gap-2 font-semibold">
             <History className="h-4 w-4" /> Verification history ({history.length})
           </h2>

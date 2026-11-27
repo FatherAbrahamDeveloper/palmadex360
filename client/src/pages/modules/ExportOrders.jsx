@@ -1,28 +1,36 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ShoppingCart, Plus, AlertCircle } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { ShoppingCart, Plus, AlertCircle, Search } from "lucide-react";
 import ModulePageShell from "@/components/modules/ModulePageShell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import ExportOrderCard from "@/components/modules/export-orders/ExportOrderCard";
 import ExportOrderFormDialog from "@/components/modules/export-orders/ExportOrderFormDialog";
-import { exportOrderApi, getErrorMessage } from "@/services/api"; // adjust path
+import { exportOrderApi, getErrorMessage } from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
+import { canAccess } from "@/lib/roleConfig";
 
 const PAGE_SIZE = 20;
 
 export default function ExportOrders() {
+  const { user } = useAuth();
+  const canEdit = canAccess(user, "orders", "EDIT");
+  const [params, setParams] = useSearchParams();
+  const [search, setSearch] = useState(params.get("q") || "");
   const [orders, setOrders] = useState([]);
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(params.get("new") === "1" && canEdit);
   const [editing, setEditing] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await exportOrderApi.list({ page, limit: PAGE_SIZE });
+      const res = await exportOrderApi.list({ page, limit: PAGE_SIZE, search: search.trim() || undefined });
       setOrders(res.data);
       setMeta(res.meta);
     } catch (err) {
@@ -30,11 +38,14 @@ export default function ExportOrders() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, search]);
 
   useEffect(() => {
-    load();
+    const t = setTimeout(load, 250);
+    return () => clearTimeout(t);
   }, [load]);
+
+  useEffect(() => setPage(1), [search]);
 
   const openNew = () => { setEditing(null); setDialogOpen(true); };
   const openEdit = (order) => { setEditing(order); setDialogOpen(true); };
@@ -49,33 +60,37 @@ export default function ExportOrders() {
       title="Export Order Management"
       description="Track and manage all export orders"
       icon={ShoppingCart}
-      actions={
+      actions={canEdit && (
         <Button size="sm" onClick={openNew}>
           <Plus className="w-4 h-4 mr-1" /> New Order
         </Button>
-      }
+      )}
     >
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter by order number, customer or product" className="pl-9" aria-label="Filter orders" />
+      </div>
       {loading ? (
         <div className="space-y-4">
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-36 w-full rounded-xl" />)}
         </div>
       ) : error ? (
-        <div className="bg-card rounded-xl border p-8 text-center space-y-3">
+        <div className="surface p-8 text-center space-y-3">
           <AlertCircle className="w-8 h-8 mx-auto text-destructive" />
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button variant="outline" size="sm" onClick={load}>Try again</Button>
         </div>
       ) : orders.length === 0 ? (
-        <div className="bg-card rounded-xl border p-10 text-center space-y-3">
+        <div className="surface p-10 text-center space-y-3">
           <ShoppingCart className="w-8 h-8 mx-auto text-muted-foreground" />
           <h3 className="font-semibold">No export orders yet</h3>
           <p className="text-sm text-muted-foreground">Create your first order to start tracking shipments.</p>
-          <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-1" /> New Order</Button>
+          {canEdit && <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-1" /> New Order</Button>}
         </div>
       ) : (
         <div className="space-y-4">
           {orders.map((o) => (
-            <ExportOrderCard key={o.id} order={o} onClick={() => openEdit(o)} />
+            <ExportOrderCard key={o.id} order={o} onClick={() => canEdit && openEdit(o)} />
           ))}
 
           {meta.totalPages > 1 && (
@@ -90,7 +105,7 @@ export default function ExportOrders() {
 
       <ExportOrderFormDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={(o) => { setDialogOpen(o); if (!o && params.get("new")) setParams({}); }}
         order={editing}
         onSaved={load}
         onDeleted={handleDeleted}
